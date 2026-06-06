@@ -1223,7 +1223,7 @@ function checkPw(){
   </div>
 </div>
 
-<div class="footer">🐱 貓貓生日之旅 2026<br><span style="font-size:10px;color:#bbb">長按此處重置進度</span></div>
+<div class="footer">🐱 貓貓生日之旅 2026</div>
 <div class="adm-entry" onclick="openAdmLogin()">⚙️ 管理後台</div>
 
 <!-- FAB -->
@@ -1250,6 +1250,7 @@ const TIMES={
 };
 const PREV={2:1,4:3,6:5,8:7,10:9,12:11,14:13,17:16,19:18,21:20};
 const TOTAL=21;
+function getClaudeKey(){return localStorage.getItem('fjt26_akey')||'';}
 
 // ── LEVEL NAMES FOR GALLERY ──
 const NAMES={
@@ -1336,6 +1337,69 @@ function canOpen(id){
 }
 
 // ── RENDER CARD ──
+async function callClaude(prompt,maxTokens){
+  maxTokens=maxTokens||600;
+  const key=getClaudeKey();
+  if(!key){alert('請先在後台設定中輸入 Claude API Key');throw new Error('no key');}
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+      'content-type':'application/json'
+    },
+    body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:maxTokens,
+      messages:[{role:'user',content:prompt}]})
+  });
+  if(!r.ok)throw new Error('API '+r.status);
+  const d=await r.json();
+  return d.content[0].text;
+}
+
+async function genAiTask(id){
+  const btn=document.getElementById('adm-ai-btn-'+id);
+  const ta=document.getElementById('adm-i-ti'+id);
+  if(!btn||!ta)return;
+  const taskName=(document.getElementById('adm-i-t'+id)||{}).value||NAMES[id]||'第'+id+'關';
+  btn.textContent='⏳ 生成中…';btn.disabled=true;
+  try{
+    const result=await callClaude(
+      '你是日本旅遊行程助手，請為以下景點生成4到6個具體的打卡任務項目（繁體中文），每項一行，不要編號，不要符號，只要任務文字：\n景點：'+taskName
+    );
+    const items=result.split('\n').map(function(s){return s.trim();}).filter(function(s){return s;}).slice(0,6).join('\n');
+    ta.value=items;
+    setAdmField(id,'taskItems',items);
+    btn.textContent='✅ 完成';
+  }catch(e){
+    btn.textContent='❌ 失敗，請重試';
+  }
+  setTimeout(function(){btn.textContent='🤖 AI 生成任務';btn.disabled=false;},2000);
+}
+
+async function genAiDiary(){
+  const btn=document.getElementById('ai-diary-btn');
+  const out=document.getElementById('ai-diary-out');
+  if(!btn||!out)return;
+  btn.textContent='⏳ AI 撰寫中…';btn.disabled=true;
+  const completed=gs().c;
+  let totalPhotos=0;for(let i=1;i<=TOTAL;i++)totalPhotos+=getPhotos(i).length;
+  const spots=DAYS.map(function(d,i){return d.name+'：'+d.levels.map(function(l){return NAMES[l]||'第'+l+'關';}).join('、');}).join('\n');
+  try{
+    const text=await callClaude(
+      '你是一位溫柔的旅遊作家，請用繁體中文為以下日本旅程寫一篇300字以內的旅遊日記，語氣溫馨感性，像是給摯友的心情記錄。旅程如下：\n'+spots+'\n\n旅程完成了'+completed.length+'個關卡，共拍攝'+totalPhotos+'張照片，請寫出一篇有感情、有畫面感的旅遊摘要。',
+      900
+    );
+    out.style.display='block';
+    out.innerHTML='<div style="background:#fffbf5;border-radius:14px;padding:20px 18px;margin-top:16px;text-align:left;font-size:14px;line-height:1.9;color:#3d2c1e;white-space:pre-wrap;border:1px solid #f0e0c8">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+    btn.textContent='🔄 重新生成';btn.disabled=false;
+  }catch(e){
+    out.style.display='block';
+    out.innerHTML='<div style="color:#e8715a;padding:12px;text-align:center">生成失敗，請確認網路連線後重試。</div>';
+    btn.textContent='✨ AI 生成旅遊日記';btn.disabled=false;
+  }
+}
+
 function render(id){
   const card=document.getElementById('c'+id);
   if(!card)return;
@@ -1615,6 +1679,9 @@ function openSummary(){
     <p>富士山見證了這個生日<br>
     而你們一起，寫下了最好的故事。</p>
     <div class="s-finale-sig">🐱 貓貓生日之旅 2026 · 完</div>
+    <button id="ai-diary-btn" onclick="genAiDiary()"
+      style="margin-top:20px;padding:12px 28px;border-radius:24px;border:none;background:linear-gradient(135deg,#f093fb,#f5576c);color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px;box-shadow:0 4px 15px rgba(245,87,108,.4)">✨ AI 生成旅遊日記</button>
+    <div id="ai-diary-out" style="display:none;width:100%;max-width:480px;margin:0 auto"></div>
   </div></div>`;
 
   content.innerHTML=html;
@@ -2013,31 +2080,48 @@ function buildAdmPanel(){
           <textarea id="adm-i-n${i}" class="adm-ta"
             oninput="setAdmField(${i},'note',this.value)">${esc(a.note||'')}</textarea></div>
         <button class="adm-rst" onclick="resetAdmTask(${i})">↺ 重置此關</button>
+        <button id="adm-ai-btn-${i}" onclick="genAiTask(${i})"
+          style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px">🤖 AI 生成任務</button>
       </div>
     </div>`;
   }
   panel=document.createElement('div');
   panel.id='adm-panel';panel.className='vis';
+  const savedKey=localStorage.getItem('fjt26_akey')||'';
   panel.innerHTML=`<div class="adm-nav">
     <button class="adm-close" onclick="closeAdmPanel()">✕</button>
     <h2>🔧 行程管理後台</h2>
   </div>
-  <div class="adm-scroll">${html}</div>`;
+  <div class="adm-scroll">
+    <div style="background:#f0f4ff;border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:800;color:#1a365d;margin-bottom:8px">🤖 Claude API 設定</div>
+      <div style="font-size:12px;color:#666;margin-bottom:8px">輸入後儲存在此裝置，不會上傳至任何地方</div>
+      <input id="adm-api-key" type="password" placeholder="sk-ant-api03-..." value="${savedKey}"
+        style="width:100%;padding:10px;border:1.5px solid #c7d2fe;border-radius:8px;font-size:13px;font-family:monospace;box-sizing:border-box;margin-bottom:8px">
+      <button onclick="(function(){const v=document.getElementById('adm-api-key').value.trim();localStorage.setItem('fjt26_akey',v);alert(v?'✅ API Key 已儲存':'已清除 API Key');})();"
+        style="width:100%;padding:10px;border-radius:8px;border:none;background:#4f46e5;color:#fff;font-size:13px;font-weight:700;cursor:pointer">儲存 API Key</button>
+    </div>
+  ${html}
+    <div style="margin-top:24px;padding:16px;background:#fff;border-radius:12px;text-align:center">
+      <div style="font-size:12px;color:#999;margin-bottom:10px">危險操作區</div>
+      <button onclick="resetAllProgress()" style="padding:10px 24px;border-radius:10px;border:1.5px solid #e8715a;background:none;color:#e8715a;font-size:14px;font-weight:700;cursor:pointer">
+        🗑️ 重置所有闖關進度
+      </button>
+    </div>
+  </div>`;
   document.body.appendChild(panel);
 }
 function closeAdmPanel(){const p=document.getElementById('adm-panel');if(p)p.classList.remove('vis');}
 function admTog(id){const c=document.getElementById('adm-c'+id);if(c)c.classList.toggle('open');}
 
-// ── FOOTER LONG PRESS RESET ──
-let _hold;
-const foot=document.querySelector('.footer');
-['touchstart','mousedown'].forEach(ev=>foot.addEventListener(ev,()=>{
-  _hold=setTimeout(()=>{if(confirm('確定重置所有進度？（此操作無法復原）')){
-    for(let i=1;i<=21;i++)localStorage.removeItem('fjt26_p'+i);
-    localStorage.removeItem('fjt26');location.reload();
-  }},2000);
-}));
-['touchend','mouseup','mouseleave'].forEach(ev=>foot.addEventListener(ev,()=>clearTimeout(_hold)));
+function resetAllProgress(){
+  if(confirm('確定重置所有進度？\n（照片與闖關紀錄將全部清除，此操作無法復原）')){
+    for(let i=1;i<=TOTAL;i++)localStorage.removeItem('fjt26_p'+i);
+    localStorage.removeItem('fjt26');
+    localStorage.removeItem('fjt26_adm');
+    location.reload();
+  }
+}
 
 // ── INIT ──
 if(gs().c.length===TOTAL)document.getElementById('fab-sum').classList.add('vis');
