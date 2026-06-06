@@ -1377,24 +1377,77 @@ async function genAiTask(id){
   setTimeout(function(){btn.textContent='🤖 AI 生成任務';btn.disabled=false;},2000);
 }
 
+async function callClaudeRaw(contentArr,maxTokens){
+  maxTokens=maxTokens||2000;
+  const key=getClaudeKey();
+  if(!key){alert('請先在後台設定中輸入 Claude API Key');throw new Error('no key');}
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+      'content-type':'application/json'
+    },
+    body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:maxTokens,
+      messages:[{role:'user',content:contentArr}]})
+  });
+  if(!r.ok)throw new Error('API '+r.status);
+  const d=await r.json();
+  return d.content[0].text;
+}
+
 async function genAiDiary(){
   const btn=document.getElementById('ai-diary-btn');
   const out=document.getElementById('ai-diary-out');
   if(!btn||!out)return;
-  btn.textContent='⏳ AI 撰寫中…';btn.disabled=true;
+  btn.textContent='⏳ AI 分析照片中…';btn.disabled=true;
+  out.style.display='block';
+  out.innerHTML='<div style="text-align:center;padding:20px;color:#888;font-size:13px">正在分析照片並撰寫旅遊日記，請稍候…</div>';
+
   const completed=gs().c;
   let totalPhotos=0;for(let i=1;i<=TOTAL;i++)totalPhotos+=getPhotos(i).length;
-  const spots=DAYS.map(function(d,i){return d.name+'：'+d.levels.map(function(l){return NAMES[l]||'第'+l+'關';}).join('、');}).join('\n');
+  const contentArr=[];
+  const photoLids=[];
+
+  DAYS.forEach(function(day){
+    day.levels.forEach(function(lid){
+      const photos=getPhotos(lid);
+      if(photos.length>0&&completed.includes(lid)){
+        const b64=photos[0].replace(/^data:[^;]+;base64,/,'');
+        contentArr.push({type:'text',text:'景點'+lid+'（'+( NAMES[lid]||'第'+lid+'關')+'）的照片：'});
+        contentArr.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}});
+        photoLids.push(lid);
+      }
+    });
+  });
+
+  const spots=DAYS.map(function(d){return d.name+'：'+d.levels.map(function(l){return NAMES[l]||'第'+l+'關';}).join('、');}).join('\n');
+  const instruction='你是一位溫柔的旅遊作家。以上是這趟日本旅程（'+spots+'）中各景點的照片。\n\n請用繁體中文完成：\n1. 根據每張照片，為對應景點生成一句20字以內的溫馨描述\n2. 寫一篇整體旅遊日記（250字以內，溫馨感性）\n\n請只回覆純JSON，不要加markdown：{"desc":{"景點編號":"描述"},"diary":"日記"}';
+  if(contentArr.length>0){
+    contentArr.push({type:'text',text:instruction});
+  }else{
+    contentArr.push({type:'text',text:'旅程：'+spots+'\n完成'+completed.length+'關，共'+totalPhotos+'張照片。\n請用繁體中文寫旅遊日記（250字內）。\n只回覆純JSON：{"desc":{},"diary":"日記"}'});
+  }
+
   try{
-    const text=await callClaude(
-      '你是一位溫柔的旅遊作家，請用繁體中文為以下日本旅程寫一篇300字以內的旅遊日記，語氣溫馨感性，像是給摯友的心情記錄。旅程如下：\n'+spots+'\n\n旅程完成了'+completed.length+'個關卡，共拍攝'+totalPhotos+'張照片，請寫出一篇有感情、有畫面感的旅遊摘要。',
-      900
-    );
-    out.style.display='block';
-    out.innerHTML='<div style="background:#fffbf5;border-radius:14px;padding:20px 18px;margin-top:16px;text-align:left;font-size:14px;line-height:1.9;color:#3d2c1e;white-space:pre-wrap;border:1px solid #f0e0c8">'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+    const raw=await callClaudeRaw(contentArr,2200);
+    const m=raw.match(/\{[\s\S]*\}/);
+    let parsed={desc:{},diary:''};
+    try{if(m)parsed=JSON.parse(m[0]);}catch(e){parsed.diary=raw;}
+
+    if(parsed.desc){
+      Object.keys(parsed.desc).forEach(function(lid){
+        const el=document.getElementById('s-desc-'+lid);
+        if(el){el.textContent=parsed.desc[lid];el.style.color='#7c5c3e';}
+      });
+    }
+    const diaryText=parsed.diary||'';
+    out.innerHTML=diaryText
+      ?'<div style="background:#fffbf5;border-radius:14px;padding:20px 18px;margin-top:4px;text-align:left;font-size:14px;line-height:1.9;color:#3d2c1e;white-space:pre-wrap;border:1px solid #f0e0c8">'+diaryText.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'
+      :'';
     btn.textContent='🔄 重新生成';btn.disabled=false;
   }catch(e){
-    out.style.display='block';
     out.innerHTML='<div style="color:#e8715a;padding:12px;text-align:center">生成失敗，請確認網路連線後重試。</div>';
     btn.textContent='✨ AI 生成旅遊日記';btn.disabled=false;
   }
@@ -1655,7 +1708,7 @@ function openSummary(){
           <div class="s-memoji">${em}</div>
           <div class="s-minfo">
             <div class="s-mtitle">${NAMES[lid]||'第'+lid+'關'}</div>
-            <div class="s-mdesc">${DESC[lid]||''}</div>
+            <div class="s-mdesc" id="s-desc-${lid}">${DESC[lid]||''}</div>
           </div>
           <div class="s-mnum">${String(lid).padStart(2,'0')}</div>
         </div>`;
