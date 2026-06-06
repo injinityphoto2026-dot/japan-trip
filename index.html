@@ -382,8 +382,7 @@ function checkPw(){
     <div class="s-snav-title">🐱 旅程總結</div>
   </div>
   <div class="s-actions">
-    <button class="s-abtn s-abtn-pdf" onclick="exportPDF()">📄 匯出 PDF</button>
-    <button class="s-abtn s-abtn-poster" onclick="generatePoster()">🖼️ 製作旅遊海報</button>
+    <button class="s-abtn s-abtn-poster" onclick="generatePoster()">🤖 AI 精選海報</button>
   </div>
   <div id="s-content"></div>
 </div>
@@ -1444,7 +1443,7 @@ async function genAiDiary(){
     }
     const diaryText=parsed.diary||'';
     out.innerHTML=diaryText
-      ?'<div style="background:#fffbf5;border-radius:14px;padding:20px 18px;margin-top:4px;text-align:left;font-size:14px;line-height:1.9;color:#3d2c1e;white-space:pre-wrap;border:1px solid #f0e0c8">'+diaryText.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'
+      ?'<div style="background:#fafaf8;border-top:1px solid #dedad4;border-bottom:1px solid #dedad4;padding:28px 20px;margin-top:16px;text-align:left;font-size:13.5px;line-height:2.5;color:#4a453e;white-space:pre-wrap;letter-spacing:0.06em;font-family:\'Hiragino Mincho ProN\',\'Noto Serif TC\',Georgia,serif">'+diaryText.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'
       :'';
     btn.textContent='🔄 重新生成';btn.disabled=false;
   }catch(e){
@@ -1735,6 +1734,10 @@ function openSummary(){
     <button id="ai-diary-btn" onclick="genAiDiary()"
       style="margin-top:20px;padding:12px 28px;border-radius:24px;border:none;background:linear-gradient(135deg,#f093fb,#f5576c);color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px;box-shadow:0 4px 15px rgba(245,87,108,.4)">✨ AI 生成旅遊日記</button>
     <div id="ai-diary-out" style="display:none;width:100%;max-width:480px;margin:0 auto"></div>
+    <button onclick="exportPDF()"
+      style="margin-top:24px;padding:10px 28px;border-radius:4px;border:1px solid #c8c2b8;background:none;color:#7a7268;font-size:13px;letter-spacing:.08em;cursor:pointer;font-family:inherit">
+      PDF 匯出
+    </button>
   </div></div>`;
 
   content.innerHTML=html;
@@ -1828,44 +1831,29 @@ ${blocks}
 }
 
 // ── POSTER ──
-// ── Canvas-based AI photo scoring ──
-async function analyzePhoto(dataUrl){
-  return new Promise(resolve=>{
-    const img=new Image();
-    img.onload=()=>{
-      const S=80,cv=document.createElement('canvas');
-      cv.width=S;cv.height=S;
-      const ctx=cv.getContext('2d');
-      ctx.drawImage(img,0,0,S,S);
-      const d=ctx.getImageData(0,0,S,S).data;
-      let satSum=0,briSum=0,briSq=0,n=S*S;
-      for(let i=0;i<d.length;i+=4){
-        const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255;
-        const mx=Math.max(r,g,b),mn=Math.min(r,g,b);
-        const bri=(mx+mn)/2;
-        const sat=mx===mn?0:(bri<0.5?(mx-mn)/(mx+mn):(mx-mn)/(2-mx-mn));
-        satSum+=sat;briSum+=bri;briSq+=bri*bri;
-      }
-      const avgSat=satSum/n,avgBri=briSum/n;
-      const briVar=briSq/n-avgBri*avgBri;
-      const brightScore=1-Math.abs(avgBri-0.5)*2;
-      resolve(avgSat*0.5+briVar*2.5+brightScore*0.3);
-    };
-    img.onerror=()=>resolve(0);
-    img.src=dataUrl;
-  });
-}
 async function pickBestPhotoAI(){
   const candidates=[];
   for(let lid=1;lid<=TOTAL;lid++){
     const photos=getPhotos(lid);
-    for(const url of photos)candidates.push({url,lid,name:NAMES[lid]||'第'+lid+'關'});
+    if(photos.length>0)candidates.push({url:photos[0],lid,name:NAMES[lid]||'第'+lid+'關'});
   }
   if(!candidates.length)return null;
   if(candidates.length===1)return candidates[0];
-  const scores=await Promise.all(candidates.map(c=>analyzePhoto(c.url)));
-  let bi=0;for(let i=1;i<scores.length;i++)if(scores[i]>scores[bi])bi=i;
-  return candidates[bi];
+  const key=getClaudeKey();
+  if(!key)return candidates[0];
+  const contentArr=[];
+  candidates.forEach(function(c,i){
+    const b64=c.url.replace(/^data:[^;]+;base64,/,'');
+    contentArr.push({type:'text',text:'照片'+(i+1)+'（'+c.name+'）：'});
+    contentArr.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}});
+  });
+  contentArr.push({type:'text',text:'以上是日本旅遊各景點的代表照片。請從中選出最具紀念價值的一張（考量：構圖美感、情感溫度、旅遊記憶價值）。\n只回覆一個數字（1到'+candidates.length+'），代表你選擇的照片編號，不要說其他任何話。'});
+  try{
+    const raw=await callClaudeRaw(contentArr,30);
+    const m=raw.match(/\d+/);
+    if(m){const idx=parseInt(m[0])-1;if(idx>=0&&idx<candidates.length)return candidates[idx];}
+  }catch(e){}
+  return candidates[0];
 }
 
 function pline(ctx,x1,y1,x2,y2){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
