@@ -297,8 +297,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",s
 .pop{animation:pop .38s ease}
 @keyframes confetti-fall{to{transform:translateY(110vh) rotate(720deg)}}
 </style>
+<style>
+#pw-overlay{position:fixed;inset:0;background:#1a365d;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+#pw-overlay h2{color:#fff;font-size:22px;letter-spacing:2px}
+#pw-overlay p{color:rgba(255,255,255,.6);font-size:13px}
+#pw-input{padding:12px 18px;border-radius:12px;border:none;font-size:18px;text-align:center;width:220px;letter-spacing:4px}
+#pw-btn{padding:12px 32px;border-radius:12px;border:none;background:#e8715a;color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+#pw-err{color:#ffaaaa;font-size:13px;min-height:18px}
+</style>
 </head>
 <body>
+
+<!-- PASSWORD OVERLAY -->
+<div id="pw-overlay">
+  <h2>🐱 貓貓生日之旅</h2>
+  <p>請輸入通行密碼</p>
+  <input id="pw-input" type="password" placeholder="••••••" onkeydown="if(event.key==='Enter')checkPw()">
+  <button id="pw-btn" onclick="checkPw()">解鎖</button>
+  <div id="pw-err"></div>
+</div>
+<script>
+(function(){
+  if(sessionStorage.getItem('fjt_auth')==='1'){
+    document.getElementById('pw-overlay').style.display='none';
+  }
+})();
+function checkPw(){
+  const v=document.getElementById('pw-input').value;
+  if(v==='maomao'){
+    sessionStorage.setItem('fjt_auth','1');
+    document.getElementById('pw-overlay').style.display='none';
+  } else {
+    document.getElementById('pw-err').textContent='密碼錯誤，請再試一次';
+    document.getElementById('pw-input').value='';
+  }
+}
+</script>
 
 <!-- TOPBAR -->
 <div id="topbar">
@@ -1369,6 +1403,10 @@ function chkKw(id){
 
 // ── DONE ──
 function done(id){
+  if(getPhotos(id).length===0){
+    alert('📷 請先上傳至少一張照片，才能完成任務！');
+    return;
+  }
   const s=gs();if(!s.c.includes(id)){s.c.push(id);ss(s)}
   render(id);refreshAll();
   if(id===TOTAL){
