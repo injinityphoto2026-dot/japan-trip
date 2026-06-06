@@ -288,7 +288,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",s
 .final-reveal p{font-size:13px;color:var(--muted);line-height:1.85}
 
 /* Footer */
-.footer{text-align:center;padding:20px 16px;color:var(--muted);font-size:12px;line-height:1.8}
+.footer{text-align:center;padding:20px 16px 8px;color:var(--muted);font-size:12px;line-height:1.8}
+.adm-entry{display:block;text-align:center;padding:14px 0 24px;color:#ccc;font-size:11px;cursor:pointer;letter-spacing:1px;user-select:none}
+.adm-entry:active{color:#999}
+#adm-panel{position:fixed;inset:0;background:#f4f0e8;z-index:9500;display:none;flex-direction:column}
+#adm-panel.vis{display:flex}
+.adm-nav{background:var(--navy);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.adm-nav h2{font-size:16px;font-weight:700;flex:1;margin:0}
+.adm-close{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 4px;line-height:1}
+.adm-scroll{flex:1;overflow-y:auto;padding:12px 14px}
+.adm-card{background:#fff;border-radius:12px;margin-bottom:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.06)}
+.adm-card-head{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
+.adm-num{width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.adm-ctitle{flex:1;font-size:14px;font-weight:700;color:#333}
+.adm-arrow{font-size:11px;color:#bbb;transition:transform .2s}
+.adm-cbody{padding:0 14px 14px;display:none}
+.adm-card.open .adm-arrow{transform:rotate(90deg)}
+.adm-card.open .adm-cbody{display:block}
+.adm-field{margin-bottom:10px}
+.adm-lbl{font-size:11px;color:#888;font-weight:600;margin-bottom:4px;display:block;letter-spacing:.5px}
+.adm-inp{width:100%;padding:8px 10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;background:#fff}
+.adm-inp:focus{border-color:var(--navy);outline:none}
+.adm-ta{width:100%;padding:8px 10px;border:1.5px solid #f0a800;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:60px;background:#fffbf0}
+.adm-ta:focus{border-color:#e8a000;outline:none}
+.adm-rst{padding:6px 14px;border-radius:8px;border:1.5px solid var(--coral);background:none;color:var(--coral);font-size:12px;cursor:pointer;font-weight:600}
+.adm-note-box{background:#fffbf0;border-left:3px solid #f0a800;border-radius:0 6px 6px 0;padding:8px 12px;margin-bottom:10px;font-size:13px;color:#7a5000;font-weight:500;line-height:1.5}
 
 /* Animations */
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
@@ -1200,6 +1224,7 @@ function checkPw(){
 </div>
 
 <div class="footer">🐱 貓貓生日之旅 2026<br><span style="font-size:10px;color:#bbb">長按此處重置進度</span></div>
+<div class="adm-entry" onclick="openAdmLogin()">⚙️ 管理後台</div>
 
 <!-- FAB -->
 <button class="fab-sum" id="fab-sum" onclick="openSummary()" title="旅程總結">🏅</button>
@@ -1335,8 +1360,27 @@ function render(id){
   // Reveal real info
   card.classList.remove('locked');card.classList.add('unlocked');
   if(em)em.textContent=card.dataset.ri||em.textContent;
-  if(tt)tt.textContent=card.dataset.rt||tt.textContent;
-  if(ts)ts.textContent=card.dataset.rs||ts.textContent;
+  const admD=getAdm()[id]||{};
+  if(tt)tt.textContent=admD.title||(card.dataset.rt||tt.textContent);
+  if(ts)ts.textContent=admD.sub!==undefined?admD.sub:(card.dataset.rs||ts.textContent);
+  // Time label override
+  const timeEl=card.querySelector('.card-time');
+  if(timeEl){
+    if(!timeEl.dataset.orig)timeEl.dataset.orig=timeEl.textContent;
+    timeEl.textContent=admD.time||timeEl.dataset.orig;
+  }
+  // Admin note box
+  let noteBox=document.getElementById('adm-nb'+id);
+  if(admD.note){
+    if(!noteBox){
+      noteBox=document.createElement('div');noteBox.id='adm-nb'+id;noteBox.className='adm-note-box';
+      const body=document.getElementById('b'+id);
+      if(body){const lkEl=document.getElementById('lk'+id);
+        if(lkEl&&lkEl.nextSibling)body.insertBefore(noteBox,lkEl.nextSibling);
+        else body.prepend(noteBox);}
+    }
+    noteBox.textContent='📢 '+admD.note;
+  }else if(noteBox){noteBox.remove();}
   if(lk)lk.style.display='none';
 
   if(hasKw){
@@ -1843,6 +1887,108 @@ function launchConfetti(){
   }
   draw();
 }
+
+// ── ADMIN ──
+function getAdm(){try{return JSON.parse(localStorage.getItem("fjt26_adm"))||{}}catch{return{}}}
+function saveAdm(d){localStorage.setItem("fjt26_adm",JSON.stringify(d))}
+function setAdmField(id,field,val){
+  const d=getAdm();if(!d[id])d[id]={};
+  if(val!==''&&val!==undefined)d[id][field]=val;
+  else delete d[id][field];
+  if(!Object.keys(d[id]).length)delete d[id];
+  saveAdm(d);render(id);
+}
+function resetAdmTask(id){
+  const d=getAdm();delete d[id];saveAdm(d);render(id);
+  ['t','s','tm','n'].forEach(f=>{
+    const el=document.getElementById('adm-i-'+f+id);
+    if(!el)return;
+    if(f==='t'){const c=document.getElementById('c'+id);el.value=c?c.dataset.rt||'':'';}
+    else if(f==='s'){const c=document.getElementById('c'+id);el.value=c?c.dataset.rs||'':'';}
+    else if(f==='tm'){const c=document.getElementById('c'+id);const te=c?c.querySelector('.card-time'):null;el.value=te?te.dataset.orig||te.textContent:'';}
+    else el.value='';
+  });
+}
+let _admAuth=false;
+function openAdmLogin(){
+  if(_admAuth){buildAdmPanel();return;}
+  const ov=document.createElement('div');
+  ov.id='adm-login-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9600;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML=`<div style="background:#fff;border-radius:16px;padding:28px 24px;width:260px;text-align:center">
+    <div style="font-size:22px;margin-bottom:8px">🔧</div>
+    <div style="font-size:15px;font-weight:800;color:#1a365d;margin-bottom:16px">管理後台登入</div>
+    <input id="adm-pw-inp" type="password" placeholder="請輸入密碼"
+      style="width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:15px;text-align:center;margin-bottom:8px"
+      onkeydown="if(event.key==='Enter')doAdmLogin()">
+    <div id="adm-pw-err" style="color:#e8715a;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="this.closest('#adm-login-ov').remove()"
+        style="flex:1;padding:10px;border:1.5px solid #ddd;border-radius:8px;background:none;font-size:13px;cursor:pointer">取消</button>
+      <button onclick="doAdmLogin()"
+        style="flex:1;padding:10px;border:none;border-radius:8px;background:#1a365d;color:#fff;font-size:13px;font-weight:700;cursor:pointer">登入</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>document.getElementById('adm-pw-inp').focus(),100);
+}
+function doAdmLogin(){
+  const v=document.getElementById('adm-pw-inp').value;
+  if(v==='maomao'){
+    _admAuth=true;
+    document.getElementById('adm-login-ov').remove();
+    buildAdmPanel();
+  }else{
+    document.getElementById('adm-pw-err').textContent='密碼錯誤';
+    document.getElementById('adm-pw-inp').value='';
+  }
+}
+function buildAdmPanel(){
+  let panel=document.getElementById('adm-panel');
+  if(panel){panel.classList.add('vis');return;}
+  const adm=getAdm();
+  let html='';
+  for(let i=1;i<=TOTAL;i++){
+    const c=document.getElementById('c'+i);
+    const ot=c?c.dataset.rt||NAMES[i]||'第'+i+'關':NAMES[i]||'第'+i+'關';
+    const os=c?c.dataset.rs||'':'';
+    const te=c?c.querySelector('.card-time'):null;
+    const otm=te?te.dataset.orig||te.textContent:'';
+    const a=adm[i]||{};
+    html+=`<div class="adm-card" id="adm-c${i}">
+      <div class="adm-card-head" onclick="admTog(${i})">
+        <div class="adm-num">${String(i).padStart(2,'0')}</div>
+        <div class="adm-ctitle">${ot}</div>
+        <span class="adm-arrow">▶</span>
+      </div>
+      <div class="adm-cbody">
+        <div class="adm-field"><label class="adm-lbl">任務名稱</label>
+          <input id="adm-i-t${i}" class="adm-inp" value="${(a.title||ot).replace(/"/g,'&quot;')}"
+            oninput="setAdmField(${i},'title',this.value)"></div>
+        <div class="adm-field"><label class="adm-lbl">任務說明</label>
+          <input id="adm-i-s${i}" class="adm-inp" value="${(a.sub!==undefined?a.sub:os).replace(/"/g,'&quot;')}"
+            oninput="setAdmField(${i},'sub',this.value)"></div>
+        <div class="adm-field"><label class="adm-lbl">時間標示</label>
+          <input id="adm-i-tm${i}" class="adm-inp" value="${(a.time||otm).replace(/"/g,'&quot;')}"
+            oninput="setAdmField(${i},'time',this.value)"></div>
+        <div class="adm-field"><label class="adm-lbl">⚠️ 天氣備注（顯示在任務卡）</label>
+          <textarea id="adm-i-n${i}" class="adm-ta"
+            oninput="setAdmField(${i},'note',this.value)">${a.note||''}</textarea></div>
+        <button class="adm-rst" onclick="resetAdmTask(${i})">↺ 重置此關</button>
+      </div>
+    </div>`;
+  }
+  panel=document.createElement('div');
+  panel.id='adm-panel';panel.className='vis';
+  panel.innerHTML=`<div class="adm-nav">
+    <button class="adm-close" onclick="closeAdmPanel()">✕</button>
+    <h2>🔧 行程管理後台</h2>
+  </div>
+  <div class="adm-scroll">${html}</div>`;
+  document.body.appendChild(panel);
+}
+function closeAdmPanel(){const p=document.getElementById('adm-panel');if(p)p.classList.remove('vis');}
+function admTog(id){const c=document.getElementById('adm-c'+id);if(c)c.classList.toggle('open');}
 
 // ── FOOTER LONG PRESS RESET ──
 let _hold;
