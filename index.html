@@ -1381,6 +1381,16 @@ function render(id){
     }
     noteBox.textContent='📢 '+admD.note;
   }else if(noteBox){noteBox.remove();}
+  // Task content overrides
+  if(admD.taskTitle!==undefined){
+    const tel=document.querySelector('#ct'+id+' .task-title');
+    if(tel)tel.textContent=admD.taskTitle;
+  }
+  if(admD.taskItems!==undefined){
+    const ael=document.querySelector('#ct'+id+' .ach');
+    if(ael){const items=admD.taskItems.split('\n').filter(s=>s.trim());
+      ael.innerHTML=items.map(s=>`<li><span class="dot"></span><span>${s.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span></li>`).join('');}
+  }
   if(lk)lk.style.display='none';
 
   if(hasKw){
@@ -1898,14 +1908,33 @@ function setAdmField(id,field,val){
   if(!Object.keys(d[id]).length)delete d[id];
   saveAdm(d);render(id);
 }
+const _origTask={};
+function cacheOrigTask(){
+  for(let i=1;i<=TOTAL;i++){
+    const ct=document.getElementById('ct'+i);if(!ct)continue;
+    const te=ct.querySelector('.task-title');
+    const lis=ct.querySelectorAll('.ach li span:last-child');
+    _origTask[i]={title:te?te.textContent:'',items:[...lis].map(s=>s.textContent).join('\n')};
+  }
+}
 function resetAdmTask(id){
-  const d=getAdm();delete d[id];saveAdm(d);render(id);
-  ['t','s','tm','n'].forEach(f=>{
+  const d=getAdm();delete d[id];saveAdm(d);
+  // Restore task content to original
+  const orig=_origTask[id]||{};
+  const tel=document.querySelector('#ct'+id+' .task-title');
+  if(tel&&orig.title)tel.textContent=orig.title;
+  const ael=document.querySelector('#ct'+id+' .ach');
+  if(ael&&orig.items){const items=orig.items.split('\n').filter(s=>s.trim());
+    ael.innerHTML=items.map(s=>`<li><span class="dot"></span><span>${s.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span></li>`).join('');}
+  render(id);
+  ['t','s','tm','n','tt','ti'].forEach(f=>{
     const el=document.getElementById('adm-i-'+f+id);
     if(!el)return;
     if(f==='t'){const c=document.getElementById('c'+id);el.value=c?c.dataset.rt||'':'';}
     else if(f==='s'){const c=document.getElementById('c'+id);el.value=c?c.dataset.rs||'':'';}
     else if(f==='tm'){const c=document.getElementById('c'+id);const te=c?c.querySelector('.card-time'):null;el.value=te?te.dataset.orig||te.textContent:'';}
+    else if(f==='tt')el.value=orig.title||'';
+    else if(f==='ti')el.value=orig.items||'';
     else el.value='';
   });
 }
@@ -1944,8 +1973,7 @@ function doAdmLogin(){
   }
 }
 function buildAdmPanel(){
-  let panel=document.getElementById('adm-panel');
-  if(panel){panel.classList.add('vis');return;}
+  const old=document.getElementById('adm-panel');if(old)old.remove();
   const adm=getAdm();
   let html='';
   for(let i=1;i<=TOTAL;i++){
@@ -1954,7 +1982,9 @@ function buildAdmPanel(){
     const os=c?c.dataset.rs||'':'';
     const te=c?c.querySelector('.card-time'):null;
     const otm=te?te.dataset.orig||te.textContent:'';
+    const orig=_origTask[i]||{title:'',items:''};
     const a=adm[i]||{};
+    const esc=s=>s.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
     html+=`<div class="adm-card" id="adm-c${i}">
       <div class="adm-card-head" onclick="admTog(${i})">
         <div class="adm-num">${String(i).padStart(2,'0')}</div>
@@ -1962,18 +1992,26 @@ function buildAdmPanel(){
         <span class="adm-arrow">▶</span>
       </div>
       <div class="adm-cbody">
-        <div class="adm-field"><label class="adm-lbl">任務名稱</label>
-          <input id="adm-i-t${i}" class="adm-inp" value="${(a.title||ot).replace(/"/g,'&quot;')}"
+        <div class="adm-field"><label class="adm-lbl">卡片標題</label>
+          <input id="adm-i-t${i}" class="adm-inp" value="${esc(a.title||ot)}"
             oninput="setAdmField(${i},'title',this.value)"></div>
-        <div class="adm-field"><label class="adm-lbl">任務說明</label>
-          <input id="adm-i-s${i}" class="adm-inp" value="${(a.sub!==undefined?a.sub:os).replace(/"/g,'&quot;')}"
+        <div class="adm-field"><label class="adm-lbl">卡片說明</label>
+          <input id="adm-i-s${i}" class="adm-inp" value="${esc(a.sub!==undefined?a.sub:os)}"
             oninput="setAdmField(${i},'sub',this.value)"></div>
         <div class="adm-field"><label class="adm-lbl">時間標示</label>
-          <input id="adm-i-tm${i}" class="adm-inp" value="${(a.time||otm).replace(/"/g,'&quot;')}"
+          <input id="adm-i-tm${i}" class="adm-inp" value="${esc(a.time||otm)}"
             oninput="setAdmField(${i},'time',this.value)"></div>
-        <div class="adm-field"><label class="adm-lbl">⚠️ 天氣備注（顯示在任務卡）</label>
+        <div style="border-top:1px solid #eee;margin:10px 0 12px"></div>
+        <div class="adm-field"><label class="adm-lbl">📋 任務大標題</label>
+          <input id="adm-i-tt${i}" class="adm-inp" value="${esc(a.taskTitle!==undefined?a.taskTitle:orig.title)}"
+            oninput="setAdmField(${i},'taskTitle',this.value)"></div>
+        <div class="adm-field"><label class="adm-lbl">📝 任務項目（每行一項）</label>
+          <textarea id="adm-i-ti${i}" class="adm-ta" rows="4"
+            oninput="setAdmField(${i},'taskItems',this.value)">${esc(a.taskItems!==undefined?a.taskItems:orig.items)}</textarea></div>
+        <div style="border-top:1px solid #eee;margin:10px 0 12px"></div>
+        <div class="adm-field"><label class="adm-lbl">⚠️ 天氣備注（顯示在任務卡頂部）</label>
           <textarea id="adm-i-n${i}" class="adm-ta"
-            oninput="setAdmField(${i},'note',this.value)">${a.note||''}</textarea></div>
+            oninput="setAdmField(${i},'note',this.value)">${esc(a.note||'')}</textarea></div>
         <button class="adm-rst" onclick="resetAdmTask(${i})">↺ 重置此關</button>
       </div>
     </div>`;
@@ -2003,6 +2041,7 @@ const foot=document.querySelector('.footer');
 
 // ── INIT ──
 if(gs().c.length===TOTAL)document.getElementById('fab-sum').classList.add('vis');
+cacheOrigTask();
 refreshAll();
 setInterval(()=>{
   for(let i=1;i<=TOTAL;i++){if(TIMES[i])fmtCd(i);render(i)}
