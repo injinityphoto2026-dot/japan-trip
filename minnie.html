@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>🎀 米妮的生日禮物</title>
+<style>
+:root{--pink:#e91e8c;--lpink:#ffd1e8;--bg:#fff8fc;--card:#fff;--navy:#2d1020;--muted:#9d7a8c;--border:#f0dae8}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:"PingFang TC","Noto Sans TC",Helvetica,sans-serif;background:var(--bg);color:var(--navy);min-height:100vh}
+
+#pw-overlay{position:fixed;inset:0;background:linear-gradient(160deg,#2d1020,#5c1a3d);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+#pw-overlay h2{font-size:22px;color:#fff}
+#pw-overlay p{font-size:13px;color:rgba(255,255,255,.6)}
+#pw-input{width:200px;padding:12px 16px;border:none;border-radius:12px;font-size:16px;text-align:center;background:rgba(255,255,255,.15);color:#fff;outline:none}
+#pw-input::placeholder{color:rgba(255,255,255,.35)}
+#pw-btn{padding:12px 32px;background:var(--pink);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer}
+#pw-err{font-size:13px;color:#ffb3d4;min-height:18px}
+
+.progress{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:10px}
+.bar-wrap{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--pink),#ff6b9d);border-radius:3px;transition:width .4s}
+.bar-label{font-size:12px;font-weight:700;color:var(--pink);white-space:nowrap}
+
+.hero{padding:28px 20px 16px;text-align:center}
+.hero-emoji{font-size:52px;margin-bottom:8px}
+.hero-title{font-size:22px;font-weight:900;color:var(--navy)}
+.hero-sub{font-size:13px;color:var(--muted);margin-top:6px}
+.hero-date{display:inline-block;margin-top:10px;padding:4px 14px;background:var(--lpink);color:var(--pink);border-radius:20px;font-size:12px;font-weight:700}
+
+.cards{padding:0 14px 120px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(233,30,140,.08);border:1px solid var(--border)}
+.card-head{display:flex;align-items:center;gap:14px;padding:16px;cursor:pointer}
+.card-emoji-wrap{font-size:26px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;background:var(--lpink);border-radius:12px;flex-shrink:0}
+.card-info{flex:1;min-width:0}
+.card-title{font-size:15px;font-weight:800;color:var(--navy)}
+.card-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.card-time{font-size:11px;color:var(--pink);font-weight:700;margin-top:4px}
+.card-badge{font-size:13px;font-weight:900;color:var(--border)}
+.card-badge.done{color:var(--pink)}
+.card-body{padding:0 16px 16px;display:none}
+.task-title{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:8px}
+.ach{list-style:none;display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.ach li{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#5c3a4e;line-height:1.5}
+.dot{width:6px;height:6px;border-radius:3px;background:var(--pink);flex-shrink:0;margin-top:6px}
+.weather-note{background:#fff9f0;border:1px solid #ffd9a0;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#7a5a20;line-height:1.6}
+.photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.photo-thumb{width:72px;height:72px;border-radius:8px;object-fit:cover;cursor:pointer}
+.upload-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:var(--lpink);color:var(--pink);border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:12px}
+.done-btn{width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--pink),#ff6b9d);color:#fff;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:.5px}
+.done-chip{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#f0faf0;color:#3a7d44;border-radius:12px;font-size:14px;font-weight:800}
+.locked-msg{padding:14px;text-align:center;font-size:13px;color:var(--muted)}
+
+.spanel{position:fixed;inset:0;background:var(--bg);z-index:800;overflow-y:auto;transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.spanel.open{transform:translateX(0)}
+.s-nav{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:12px;z-index:10}
+.s-back{background:none;border:none;font-size:20px;cursor:pointer;color:var(--navy);padding:0}
+.s-nav-title{font-size:16px;font-weight:800;color:var(--navy)}
+
+.fab{position:fixed;bottom:22px;right:18px;width:52px;height:52px;border-radius:26px;background:linear-gradient(135deg,var(--pink),#ff6b9d);color:#fff;border:none;font-size:20px;cursor:pointer;z-index:500;box-shadow:0 4px 18px rgba(233,30,140,.4);display:flex;align-items:center;justify-content:center}
+.fab-sum{position:fixed;bottom:86px;right:18px;width:52px;height:52px;border-radius:26px;background:linear-gradient(135deg,#ff6b9d,var(--pink));color:#fff;border:none;font-size:20px;cursor:pointer;z-index:500;box-shadow:0 4px 18px rgba(233,30,140,.4);display:flex;align-items:center;justify-content:center}
+
+.adm-entry{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:11px;color:#d4bac8;cursor:pointer;z-index:100;padding:6px 12px}
+
+.lbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9500;display:none;align-items:center;justify-content:center}
+.lbox.open{display:flex}
+.lbox img{max-width:92vw;max-height:92vh;border-radius:8px;object-fit:contain}
+.lbox-close{position:absolute;top:16px;right:16px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div id="pw-overlay">
+  <div style="font-size:48px">🎀</div>
+  <h2>米妮的生日禮物</h2>
+  <p>請輸入通行密碼</p>
+  <input id="pw-input" type="password" placeholder="密碼" onkeydown="if(event.key==='Enter')checkPw()">
+  <button id="pw-btn" onclick="checkPw()">解鎖</button>
+  <div id="pw-err"></div>
+</div>
+<script>
+(function(){if(sessionStorage.getItem('mmb_auth')==='1')document.getElementById('pw-overlay').style.display='none';})();
+function checkPw(){
+  const v=document.getElementById('pw-input').value;
+  if(v==='maomao'){sessionStorage.setItem('mmb_auth','1');document.getElementById('pw-overlay').style.display='none';}
+  else{document.getElementById('pw-err').textContent='密碼錯誤，請再試一次';document.getElementById('pw-input').value='';}
+}
+</script>
+
+<div class="progress">
+  <div class="bar-wrap"><div class="bar-fill" id="bar-fill" style="width:0%"></div></div>
+  <div class="bar-label" id="bar-count">0 / 6</div>
+</div>
+
+<div class="hero">
+  <div class="hero-emoji">🎀</div>
+  <div class="hero-title">米妮的生日禮物</div>
+  <div class="hero-sub">今天，為米妮找到最完美的那份心意</div>
+  <div class="hero-date">📅 2026.06.07 · 高雄</div>
+</div>
+
+<div class="cards" id="cards"></div>
+
+<div class="spanel" id="spanel">
+  <div class="s-nav">
+    <button class="s-back" onclick="closeSummary()">←</button>
+    <div class="s-nav-title">🎀 任務完成！</div>
+  </div>
+  <div id="s-content"></div>
+</div>
+
+<div class="adm-entry" onclick="openAdmLogin()">⚙️ 管理後台</div>
+<div id="adm-panel-wrap"></div>
+
+<button class="fab-sum" id="fab-sum" onclick="openSummary()">🏅</button>
+<button class="fab" onclick="openSummary()">📷</button>
+
+<div class="lbox" id="lbox" onclick="closeLbox()">
+  <img id="lbox-img" src="" alt="">
+  <button class="lbox-close" onclick="closeLbox()">×</button>
+</div>
+
+<script>
+const TOTAL=6;
+const TASKS=[
+  {id:1,emoji:'🚇',title:'鳳山站，出發！',sub:'任務從鳳山捷運站正式啟動',time:'13:00',
+   taskTitle:'抵達鳳山捷運站',items:['找到鳳山捷運站入口','感應悠遊卡，準備進站','站在月台前拍下出發紀念照']},
+  {id:2,emoji:'🌈',title:'美麗島站 · 光之穹頂',sub:'全球最美捷運站之一，就在高雄',time:'13:30',
+   taskTitle:'在光之穹頂下打卡',items:['下車，找到光之穹頂','在彩色玻璃穹頂下仰拍','和穹頂合拍一張紀念照']},
+  {id:3,emoji:'🏬',title:'前進漢神巨蛋',sub:'從美麗島站步行前往',time:'13:45',
+   taskTitle:'抵達漢神巨蛋',items:['找到漢神巨蛋的方向','拍下漢神巨蛋外觀或招牌','順利入場！']},
+  {id:4,emoji:'🎀',title:'米妮禮物大作戰',sub:'今天最重要的任務，正式開始',time:'14:00',
+   taskTitle:'尋找米妮相關商品',items:['逛遍各樓層尋找米妮商品','至少比較3個候選禮物','拍下最心動的那個']},
+  {id:5,emoji:'🛍️',title:'做出決定！',sub:'就是你了，最完美的那份',time:'14:30',
+   taskTitle:'選定禮物並結帳',items:['選定最完美的那份禮物','前往收銀台結帳','拍下購物袋或禮物盒']},
+  {id:6,emoji:'🎂',title:'生日快樂，米妮！',sub:'今天的任務圓滿完成',time:'15:00',
+   taskTitle:'記錄這個美好時刻',items:['和禮物拍一張合照','記錄下今天的心情','期待米妮看到禮物時的笑臉 🥳']}
+];
+
+function gs(){try{return JSON.parse(localStorage.getItem('mmb26'))||{c:[]}}catch{return{c:[]}}}
+function ss(s){localStorage.setItem('mmb26',JSON.stringify(s))}
+function getPhotos(id){try{return JSON.parse(localStorage.getItem('mmb26_p'+id))||[]}catch{return[]}}
+function savePhotos(id,arr){try{localStorage.setItem('mmb26_p'+id,JSON.stringify(arr));return true}catch{alert('儲存空間不足');return false}}
+function getAdm(){try{return JSON.parse(localStorage.getItem('mmb26_adm'))||{}}catch{return{}}}
+function saveAdm(d){localStorage.setItem('mmb26_adm',JSON.stringify(d))}
+function getClaudeKey(){return localStorage.getItem('fjt26_akey')||''}
+
+async function compress(file){
+  return new Promise(r=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const MAX=900;let w=img.naturalWidth,h=img.naturalHeight;
+      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX}else{w=Math.round(w*MAX/h);h=MAX}}
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);r(c.toDataURL('image/jpeg',.72));
+    };img.src=url;
+  });
+}
+async function handleUpload(e,id){
+  const files=[...e.target.files];
+  for(const f of files){const d=await compress(f);const p=getPhotos(id);p.push(d);if(!savePhotos(id,p))break;}
+  e.target.value='';renderPhotos(id);
+}
+function delPhoto(id,i){const p=getPhotos(id);p.splice(i,1);savePhotos(id,p);renderPhotos(id);}
+function renderPhotos(id){
+  const g=document.getElementById('pg-'+id);if(!g)return;
+  const p=getPhotos(id);
+  g.innerHTML=p.map((u,i)=>`<div style="position:relative;display:inline-block">
+    <img class="photo-thumb" src="${u}" onclick="openLbox('${u}')">
+    <button onclick="delPhoto(${id},${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:1">✕</button>
+  </div>`).join('');
+}
+
+function buildCards(){
+  const adm=getAdm();const cmpl=gs().c;const cont=document.getElementById('cards');
+  let html='';
+  TASKS.forEach((t,idx)=>{
+    const done=cmpl.includes(t.id);
+    const prevDone=idx===0||cmpl.includes(TASKS[idx-1].id);
+    const locked=!done&&!prevDone;
+    const a=adm[t.id]||{};
+    const title=a.title||t.title;
+    const sub=a.sub!==undefined?a.sub:t.sub;
+    const time=a.time||t.time;
+    const taskTitle=a.taskTitle!==undefined?a.taskTitle:t.taskTitle;
+    const items=(a.taskItems!==undefined?a.taskItems:t.items.join('\n')).split('\n').filter(s=>s.trim());
+    const note=a.note||'';
+    html+=`<div class="card" id="c${t.id}">
+      <div class="card-head" onclick="toggleCard(${t.id})">
+        <div class="card-emoji-wrap">${t.emoji}</div>
+        <div class="card-info">
+          <div class="card-title">${title}</div>
+          <div class="card-sub">${sub}</div>
+          <div class="card-time">${time}</div>
+        </div>
+        <div class="card-badge${done?' done':''}">${done?'✓':String(t.id).padStart(2,'0')}</div>
+      </div>
+      <div class="card-body" id="cb${t.id}">`;
+    if(locked){
+      html+=`<div class="locked-msg">🔒 請先完成前一個任務</div>`;
+    }else{
+      if(note)html+=`<div class="weather-note">⚠️ ${note}</div>`;
+      html+=`<div class="task-title">${taskTitle}</div>
+        <ul class="ach">${items.map(s=>`<li><span class="dot"></span><span>${s}</span></li>`).join('')}</ul>
+        <div class="photo-grid" id="pg-${t.id}"></div>
+        <label style="cursor:pointer">
+          <input type="file" accept="image/*" multiple style="display:none" onchange="handleUpload(event,${t.id})">
+          <div class="upload-btn">📷 上傳照片</div>
+        </label>`;
+      html+=done?`<div class="done-chip">✅ 任務完成！</div>`:`<button class="done-btn" onclick="doneTask(${t.id})">完成此關卡 ✓</button>`;
+    }
+    html+=`</div></div>`;
+  });
+  cont.innerHTML=html;
+  TASKS.forEach(t=>renderPhotos(t.id));
+  updateBar();
+}
+
+function toggleCard(id){
+  const cb=document.getElementById('cb'+id);if(!cb)return;
+  const open=cb.style.display==='block';
+  document.querySelectorAll('.card-body').forEach(b=>b.style.display='none');
+  if(!open)cb.style.display='block';
+}
+
+function doneTask(id){
+  if(getPhotos(id).length===0){alert('📷 請先上傳至少一張照片，才能完成任務！');return;}
+  const s=gs();if(!s.c.includes(id)){s.c.push(id);ss(s);}
+  buildCards();
+  if(s.c.length===TOTAL){
+    document.getElementById('fab-sum').style.display='flex';
+    launchConfetti();setTimeout(openSummary,1800);
+  }
+}
+
+function updateBar(){
+  const n=gs().c.length;
+  document.getElementById('bar-fill').style.width=(n/TOTAL*100)+'%';
+  document.getElementById('bar-count').textContent=n+' / '+TOTAL;
+}
+
+function openSummary(){
+  const content=document.getElementById('s-content');
+  const cmpl=gs().c;let totalPhotos=0;TASKS.forEach(t=>totalPhotos+=getPhotos(t.id).length);
+  let html=`<div style="text-align:center;padding:28px 20px 16px">
+    <div style="font-size:52px">🎀</div>
+    <h1 style="font-size:20px;font-weight:900;color:var(--navy);margin:10px 0 6px">米妮的生日禮物</h1>
+    <div style="font-size:13px;color:var(--muted)">2026.06.07 · 高雄</div>
+    <div style="display:flex;justify-content:center;gap:24px;margin-top:16px">
+      <div style="text-align:center"><div style="font-size:26px;font-weight:900;color:var(--pink)">${cmpl.length}</div><div style="font-size:11px;color:var(--muted)">關完成</div></div>
+      <div style="text-align:center"><div style="font-size:26px;font-weight:900;color:var(--pink)">${totalPhotos}</div><div style="font-size:11px;color:var(--muted)">張照片</div></div>
+    </div>
+  </div><div style="padding:0 14px">`;
+  TASKS.forEach(t=>{
+    const photos=getPhotos(t.id);const done=cmpl.includes(t.id);
+    html+=`<div style="background:#fff;border-radius:14px;margin-bottom:12px;overflow:hidden;border:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px">
+        <div style="font-size:22px;width:40px;height:40px;background:var(--lpink);border-radius:10px;display:flex;align-items:center;justify-content:center">${t.emoji}</div>
+        <div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--navy)">${t.title}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px" id="s-desc-${t.id}">${t.sub}</div></div>
+        <div style="font-size:18px">${done?'✅':'⬜'}</div>
+      </div>`;
+    if(photos.length>0){
+      html+=`<div style="display:flex;gap:8px;overflow-x:auto;padding:0 14px 14px">
+        ${photos.map(u=>`<img src="${u}" style="width:80px;height:80px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:pointer" onclick="openLbox('${u}')">`).join('')}
+      </div>`;
+    }
+    html+=`</div>`;
+  });
+  html+=`<div style="text-align:center;padding:28px 0 16px">
+    <div style="font-size:40px">🎂</div>
+    <h2 style="font-size:18px;font-weight:800;color:var(--navy);margin:10px 0 8px">生日快樂，米妮！</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:2">今天的每一個腳步<br>都是為了讓米妮的生日更特別</p>
+    <div style="margin-top:14px;font-size:12px;color:#d4bac8;font-weight:700">🎀 米妮生日快樂 2026</div>
+    <button id="ai-diary-btn" onclick="genAiDiary()" style="margin-top:20px;padding:12px 28px;border-radius:24px;border:none;background:linear-gradient(135deg,#f093fb,#e91e8c);color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px;box-shadow:0 4px 15px rgba(233,30,140,.3)">✨ AI 生成今日日記</button>
+    <div id="ai-diary-out" style="display:none;width:100%;max-width:480px;margin:8px auto 0"></div>
+    <button onclick="exportPDF()" style="display:block;margin:20px auto 0;padding:10px 28px;border-radius:4px;border:1px solid #d4bac8;background:none;color:#9d7a8c;font-size:13px;letter-spacing:.08em;cursor:pointer">PDF 匯出</button>
+  </div></div>`;
+  content.innerHTML=html;
+  document.getElementById('spanel').scrollTop=0;
+  document.getElementById('spanel').classList.add('open');
+}
+function closeSummary(){document.getElementById('spanel').classList.remove('open');}
+
+function openLbox(url){document.getElementById('lbox-img').src=url;document.getElementById('lbox').classList.add('open');}
+function closeLbox(){document.getElementById('lbox').classList.remove('open');}
+
+function launchConfetti(){
+  const cv=document.createElement('canvas');cv.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9000';document.body.appendChild(cv);
+  cv.width=window.innerWidth;cv.height=window.innerHeight;
+  const ctx=cv.getContext('2d');
+  const p=Array.from({length:120},()=>({x:Math.random()*cv.width,y:-10,vx:(Math.random()-.5)*4,vy:Math.random()*3+2,r:Math.random()*5+3,c:['#e91e8c','#ffd1e8','#ff6b9d','#fff','#ff9ac1'][Math.floor(Math.random()*5)]}));
+  let f=0;(function anim(){if(f++>200){cv.remove();return;}requestAnimationFrame(anim);ctx.clearRect(0,0,cv.width,cv.height);p.forEach(pt=>{pt.x+=pt.vx;pt.y+=pt.vy;pt.vy+=.06;ctx.fillStyle=pt.c;ctx.beginPath();ctx.arc(pt.x,pt.y,pt.r,0,6.28);ctx.fill();});})();
+}
+
+async function callClaudeRaw(arr,max){
+  max=max||1500;const key=getClaudeKey();
+  if(!key){alert('請先在後台設定 Claude API Key');throw new Error('no key');}
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+    headers:{'x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true','content-type':'application/json'},
+    body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:max,messages:[{role:'user',content:arr}]})
+  });
+  if(!r.ok)throw new Error('API '+r.status);
+  return(await r.json()).content[0].text;
+}
+
+async function genAiDiary(){
+  const btn=document.getElementById('ai-diary-btn');const out=document.getElementById('ai-diary-out');if(!btn||!out)return;
+  btn.textContent='⏳ AI 分析照片中…';btn.disabled=true;
+  out.style.display='block';out.innerHTML='<div style="text-align:center;padding:16px;color:#9d7a8c;font-size:13px">正在分析照片並撰寫日記，請稍候…</div>';
+  const cmpl=gs().c;const arr=[];
+  TASKS.forEach(t=>{const ph=getPhotos(t.id);if(ph.length>0&&cmpl.includes(t.id)){const b64=ph[0].replace(/^data:[^;]+;base64,/,'');arr.push({type:'text',text:'任務'+t.id+'（'+t.title+'）的照片：'});arr.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}});}});
+  arr.push({type:'text',text:'這是一趟高雄午後的行程：鳳山捷運站→美麗島站光之穹頂→漢神巨蛋購物尋找米妮生日禮物。請根據照片，用繁體中文完成：\n1. 為每個任務生成一句15字以內的溫馨描述\n2. 寫一篇200字以內的日記（溫馨、日系簡約風格，像是給摯友的心情記錄）\n純JSON格式：{"desc":{"任務編號":"描述"},"diary":"日記"}'});
+  try{
+    const raw=await callClaudeRaw(arr,1500);
+    const m=raw.match(/\{[\s\S]*\}/);let parsed={desc:{},diary:''};
+    try{if(m)parsed=JSON.parse(m[0]);}catch(e){parsed.diary=raw;}
+    if(parsed.desc){Object.keys(parsed.desc).forEach(id=>{const el=document.getElementById('s-desc-'+id);if(el){el.textContent=parsed.desc[id];el.style.color='#7c5c3e';}});}
+    const txt=parsed.diary||'';
+    out.innerHTML=txt?'<div style="background:#fafaf8;border-top:1px solid #dedad4;border-bottom:1px solid #dedad4;padding:24px 20px;margin-top:12px;text-align:left;font-size:13.5px;line-height:2.5;color:#4a453e;white-space:pre-wrap;letter-spacing:.06em;font-family:\'Hiragino Mincho ProN\',\'Noto Serif TC\',Georgia,serif">'+txt.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>':'';
+    btn.textContent='🔄 重新生成';btn.disabled=false;
+  }catch(e){
+    out.innerHTML='<div style="color:#e8715a;padding:12px;text-align:center">生成失敗，請確認網路連線後重試。</div>';
+    btn.textContent='✨ AI 生成今日日記';btn.disabled=false;
+  }
+}
+
+function exportPDF(){
+  const w=window.open('','_blank');if(!w){alert('請先允許彈出視窗');return;}
+  const cmpl=gs().c;
+  const rows=TASKS.map(t=>{const done=cmpl.includes(t.id);const ph=getPhotos(t.id);
+    return`<div style="margin-bottom:14px;padding:14px;background:#fff;border-radius:10px;border:1px solid #f0dae8"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:18px">${t.emoji}</span><strong style="font-size:14px;color:#2d1020">${t.title}</strong><span style="margin-left:auto">${done?'✅':'⬜'}</span></div>${ph.length>0?'<div style="display:flex;gap:6px;flex-wrap:wrap">'+ph.map(u=>`<img src="${u}" style="width:80px;height:80px;object-fit:cover;border-radius:6px">`).join('')+'</div>':''}</div>`;
+  }).join('');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>米妮的生日禮物 2026</title></head><body style="font-family:'PingFang TC',sans-serif;background:#fff8fc;padding:24px;max-width:600px;margin:0 auto"><h1 style="color:#e91e8c;text-align:center">🎀 米妮的生日禮物 2026</h1><p style="text-align:center;color:#9d7a8c;margin-bottom:24px">2026.06.07 · 高雄</p>${rows}</body></html>`);
+  w.document.close();setTimeout(()=>w.print(),800);
+}
+
+let _admAuth=false;
+function openAdmLogin(){
+  if(_admAuth){buildAdmPanel();return;}
+  const ov=document.createElement('div');ov.id='adm-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9600;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML=`<div style="background:#fff;border-radius:16px;padding:28px 24px;width:260px;text-align:center">
+    <div style="font-size:22px;margin-bottom:8px">🔧</div>
+    <div style="font-size:15px;font-weight:800;color:#2d1020;margin-bottom:16px">管理後台登入</div>
+    <input id="adm-pw-inp" type="password" placeholder="請輸入密碼" style="width:100%;padding:10px;border:1.5px solid #f0dae8;border-radius:8px;font-size:15px;text-align:center;margin-bottom:8px" onkeydown="if(event.key==='Enter')doAdmLogin()">
+    <div id="adm-pw-err" style="color:#e8715a;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="document.getElementById('adm-ov').remove()" style="flex:1;padding:10px;border:1.5px solid #f0dae8;border-radius:8px;background:none;font-size:13px;cursor:pointer">取消</button>
+      <button onclick="doAdmLogin()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#e91e8c;color:#fff;font-size:13px;font-weight:700;cursor:pointer">登入</button>
+    </div></div>`;
+  document.body.appendChild(ov);setTimeout(()=>document.getElementById('adm-pw-inp').focus(),100);
+}
+function doAdmLogin(){
+  const v=document.getElementById('adm-pw-inp').value;
+  if(v==='Jinlo'){_admAuth=true;document.getElementById('adm-ov').remove();buildAdmPanel();}
+  else{document.getElementById('adm-pw-err').textContent='密碼錯誤';document.getElementById('adm-pw-inp').value='';}
+}
+function setAdmField(id,field,val){
+  const d=getAdm();if(!d[id])d[id]={};
+  if(val!==''&&val!==undefined)d[id][field]=val;else delete d[id][field];
+  if(!Object.keys(d[id]).length)delete d[id];
+  saveAdm(d);buildCards();
+}
+function resetTask(id){
+  if(!confirm('確定重置第'+id+'關？'))return;
+  const s=gs();s.c=s.c.filter(c=>c!==id);ss(s);
+  localStorage.removeItem('mmb26_p'+id);
+  const d=getAdm();delete d[id];saveAdm(d);buildCards();
+}
+function resetAllProgress(){
+  if(!confirm('確定重置所有進度？\n（照片與記錄將全部清除，無法復原）'))return;
+  for(let i=1;i<=TOTAL;i++)localStorage.removeItem('mmb26_p'+i);
+  localStorage.removeItem('mmb26');localStorage.removeItem('mmb26_adm');location.reload();
+}
+async function genAiTask(id){
+  const btn=document.getElementById('adm-ai-btn-'+id);const t=TASKS.find(x=>x.id===id);if(!btn||!t)return;
+  const ta=document.getElementById('adm-ta-'+id);
+  btn.textContent='⏳ 生成中…';btn.disabled=true;
+  try{
+    const r=await callClaudeRaw([{type:'text',text:'你是旅遊行程助手，請為以下景點生成4到6個具體的打卡任務項目（繁體中文），每項一行，不要編號、不要符號，只要任務文字：\n景點：'+t.title}],500);
+    const items=r.split('\n').map(s=>s.trim()).filter(s=>s).slice(0,6).join('\n');
+    if(ta){ta.value=items;setAdmField(id,'taskItems',items);}
+    btn.textContent='✅ 完成';
+  }catch(e){btn.textContent='❌ 失敗';}
+  setTimeout(()=>{btn.textContent='🤖 AI 生成任務';btn.disabled=false;},2000);
+}
+function buildAdmPanel(){
+  const old=document.getElementById('adm-panel');if(old)old.remove();
+  const adm=getAdm();const savedKey=localStorage.getItem('fjt26_akey')||'';
+  let cards='';
+  TASKS.forEach(t=>{
+    const a=adm[t.id]||{};const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    cards+=`<div style="background:#fff;border-radius:12px;overflow:hidden;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px;cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">
+        <span style="font-size:20px">${t.emoji}</span>
+        <span style="flex:1;font-size:14px;font-weight:700">${a.title||t.title}</span>
+        <span style="color:#9d7a8c">▶</span>
+      </div>
+      <div style="display:none;padding:0 14px 14px">
+        <div style="font-size:11px;font-weight:700;color:#9d7a8c;margin:10px 0 4px">卡片標題</div>
+        <input style="width:100%;padding:9px;border:1.5px solid #f0dae8;border-radius:8px;font-size:13px;font-family:inherit" value="${esc(a.title||t.title)}" oninput="setAdmField(${t.id},'title',this.value)">
+        <div style="font-size:11px;font-weight:700;color:#9d7a8c;margin:10px 0 4px">卡片說明</div>
+        <input style="width:100%;padding:9px;border:1.5px solid #f0dae8;border-radius:8px;font-size:13px;font-family:inherit" value="${esc(a.sub!==undefined?a.sub:t.sub)}" oninput="setAdmField(${t.id},'sub',this.value)">
+        <div style="font-size:11px;font-weight:700;color:#9d7a8c;margin:10px 0 4px">時間標示</div>
+        <input style="width:100%;padding:9px;border:1.5px solid #f0dae8;border-radius:8px;font-size:13px;font-family:inherit" value="${esc(a.time||t.time)}" oninput="setAdmField(${t.id},'time',this.value)">
+        <div style="border-top:1px solid #f0dae8;margin:12px 0 2px"></div>
+        <div style="font-size:11px;font-weight:700;color:#9d7a8c;margin:10px 0 4px">📋 任務大標題</div>
+        <input style="width:100%;padding:9px;border:1.5px solid #f0dae8;border-radius:8px;font-size:13px;font-family:inherit" value="${esc(a.taskTitle!==undefined?a.taskTitle:t.taskTitle)}" oninput="setAdmField(${t.id},'taskTitle',this.value)">
+        <div style="font-size:11px;font-weight:700;color:#9d7a8c;margin:10px 0 4px">📝 任務項目（每行一項）</div>
+        <textarea id="adm-ta-${t.id}" style="width:100%;padding:9px;border:1.5px solid #f0dae8;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:80px" oninput="setAdmField(${t.id},'taskItems',this.value)">${esc(a.taskItems!==undefined?a.taskItems:t.items.join('\n'))}</textarea>
+        <div style="font-size:11px;font-weight:700;color:#9d7a8c;margin:10px 0 4px">⚠️ 備注</div>
+        <textarea style="width:100%;padding:9px;border:1.5px solid #f0dae8;border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:50px" oninput="setAdmField(${t.id},'note',this.value)">${esc(a.note||'')}</textarea>
+        <button onclick="resetTask(${t.id})" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1.5px solid #f0dae8;background:none;color:#c07090;font-size:13px;cursor:pointer">↺ 重置此關</button>
+        <button id="adm-ai-btn-${t.id}" onclick="genAiTask(${t.id})" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:13px;font-weight:700;cursor:pointer">🤖 AI 生成任務</button>
+      </div></div>`;
+  });
+  const panel=document.createElement('div');panel.id='adm-panel';
+  panel.style.cssText='position:fixed;inset:0;background:#f8f4f6;z-index:9000;overflow-y:auto;';
+  panel.innerHTML=`<div style="position:sticky;top:0;background:#fff;border-bottom:1px solid #f0dae8;padding:14px 16px;display:flex;align-items:center;gap:12px;z-index:10">
+    <button onclick="document.getElementById('adm-panel').remove();_admAuth=false;" style="background:none;border:none;font-size:20px;cursor:pointer">✕</button>
+    <h2 style="font-size:16px;font-weight:800;color:#2d1020">🔧 行程管理後台</h2>
+  </div>
+  <div style="padding:16px">
+    <div style="background:#f0f4ff;border-radius:12px;padding:16px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:800;color:#2d1020;margin-bottom:6px">🤖 Claude API 設定</div>
+      <div style="font-size:12px;color:#666;margin-bottom:8px">與日本行程 app 共用同一個 API Key</div>
+      <input id="adm-api-key" type="password" placeholder="sk-ant-api03-..." value="${savedKey}" style="width:100%;padding:10px;border:1.5px solid #c7d2fe;border-radius:8px;font-size:13px;font-family:monospace;box-sizing:border-box;margin-bottom:8px">
+      <button onclick="(function(){const v=document.getElementById('adm-api-key').value.trim();localStorage.setItem('fjt26_akey',v);alert(v?'✅ API Key 已儲存':'已清除 API Key');})()" style="width:100%;padding:10px;border-radius:8px;border:none;background:#4f46e5;color:#fff;font-size:13px;font-weight:700;cursor:pointer">儲存 API Key</button>
+    </div>
+    ${cards}
+    <div style="padding:16px;background:#fff;border-radius:12px;text-align:center;margin-top:4px">
+      <div style="font-size:12px;color:#999;margin-bottom:10px">危險操作區</div>
+      <button onclick="resetAllProgress()" style="padding:10px 24px;border-radius:10px;border:1.5px solid #e8715a;background:none;color:#e8715a;font-size:14px;font-weight:700;cursor:pointer">🗑️ 重置所有進度</button>
+    </div>
+  </div>`;
+  document.body.appendChild(panel);
+}
+
+buildCards();
+</script>
+</body>
+</html>
