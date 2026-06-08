@@ -254,19 +254,29 @@ function openSummary(){
   </div><div style="padding:0 14px">`;
   TASKS.forEach(t=>{
     const photos=getPhotos(t.id);const done=cmpl.includes(t.id);
-    html+=`<div style="background:#fff;border-radius:14px;margin-bottom:12px;overflow:hidden;border:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:12px;padding:14px">
-        <div style="font-size:22px;width:40px;height:40px;background:var(--lpink);border-radius:10px;display:flex;align-items:center;justify-content:center">${t.emoji}</div>
-        <div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--navy)">${t.title}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px" id="s-desc-${t.id}">${t.sub}</div></div>
-        <div style="font-size:18px">${done?'✅':'⬜'}</div>
-      </div>`;
+    html+=`<div style="background:#fff;border-radius:14px;margin-bottom:14px;overflow:hidden;border:1px solid var(--border)">`;
     if(photos.length>0){
-      html+=`<div style="display:flex;gap:8px;overflow-x:auto;padding:0 14px 14px">
-        ${photos.map(u=>`<img src="${u}" style="width:80px;height:80px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:pointer" onclick="openLbox('${u}')">`).join('')}
+      html+=`<div style="position:relative;cursor:pointer" onclick="openLbox('${photos[0]}')">
+        <img src="${photos[0]}" style="width:100%;height:200px;object-fit:cover;display:block">
+        <div style="position:absolute;top:9px;right:10px;background:rgba(0,0,0,.38);border-radius:20px;padding:3px 9px;font-size:11px;color:#fff;backdrop-filter:blur(4px)">${t.time}</div>
+        ${done?'<div style="position:absolute;bottom:9px;right:10px;background:#e91e8c;border-radius:20px;padding:2px 9px;font-size:11px;color:#fff;font-weight:700">✅ 完成</div>':''}
       </div>`;
     }
-    html+=`</div>`;
+    html+=`<div style="padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:9px">
+        <div style="font-size:19px;width:36px;height:36px;background:var(--lpink);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${t.emoji}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:800;color:var(--navy)">${t.title}</div>
+        </div>
+        ${photos.length===0?`<div style="font-size:18px">${done?'✅':'⬜'}</div>`:''}
+      </div>
+      <div id="s-desc-${t.id}" style="font-size:12px;color:#9d6a7a;margin-top:8px;line-height:1.8;font-style:italic;padding-left:2px">${t.sub}</div>`;
+    if(photos.length>1){
+      html+=`<div style="display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px">
+        ${photos.slice(1).map(u=>`<img src="${u}" style="width:66px;height:66px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:pointer" onclick="openLbox('${u}')">`).join('')}
+      </div>`;
+    }
+    html+=`</div></div>`;
   });
   html+=`<div style="text-align:center;padding:28px 0 16px">
     <div style="font-size:40px">🎂</div>
@@ -329,11 +339,64 @@ async function genAiDiary(){
 function exportPDF(){
   const w=window.open('','_blank');if(!w){alert('請先允許彈出視窗');return;}
   const cmpl=gs().c;
-  const rows=TASKS.map(t=>{const done=cmpl.includes(t.id);const ph=getPhotos(t.id);
-    return`<div style="margin-bottom:14px;padding:14px;background:#fff;border-radius:10px;border:1px solid #f0dae8"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:18px">${t.emoji}</span><strong style="font-size:14px;color:#2d1020">${t.title}</strong><span style="margin-left:auto">${done?'✅':'⬜'}</span></div>${ph.length>0?'<div style="display:flex;gap:6px;flex-wrap:wrap">'+ph.map(u=>`<img src="${u}" style="width:80px;height:80px;object-fit:cover;border-radius:6px">`).join('')+'</div>':''}</div>`;
+  const descs={};TASKS.forEach(t=>{const el=document.getElementById('s-desc-'+t.id);if(el)descs[t.id]=el.textContent||t.sub;});
+  const diaryEl=document.getElementById('ai-diary-out');
+  const diaryText=diaryEl&&diaryEl.style.display!=='none'?(diaryEl.querySelector('div')||diaryEl).innerText||'':'';
+  const totalPhotos=TASKS.reduce((a,t)=>a+getPhotos(t.id).length,0);
+  const rows=TASKS.map(t=>{
+    const done=cmpl.includes(t.id);const ph=getPhotos(t.id);const desc=descs[t.id]||t.sub;
+    return`<div class="card">
+      ${ph.length>0?`<img class="hero" src="${ph[0]}">`:
+        `<div class="hero-empty"><span>${t.emoji}</span></div>`}
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-icon">${t.emoji}</div>
+          <div class="card-info"><strong>${t.title}</strong><span class="card-time">${t.time}</span></div>
+          ${done?'<div class="card-done">✅</div>':''}
+        </div>
+        <div class="card-desc">${desc.replace(/</g,'&lt;')}</div>
+        ${ph.length>1?'<div class="thumbs">'+ph.slice(1).map(u=>`<img class="thumb" src="${u}">`).join('')+'</div>':''}
+      </div>
+    </div>`;
   }).join('');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>米妮的生日禮物 2026</title></head><body style="font-family:'PingFang TC',sans-serif;background:#fff8fc;padding:24px;max-width:600px;margin:0 auto"><h1 style="color:#e91e8c;text-align:center">🎀 米妮的生日禮物 2026</h1><p style="text-align:center;color:#9d7a8c;margin-bottom:24px">2026.06.07 · 高雄</p>${rows}</body></html>`);
-  w.document.close();setTimeout(()=>w.print(),800);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>米妮的生日禮物 2026</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'PingFang TC','Hiragino Sans GB',sans-serif;background:#fff8fc;padding:28px 20px;max-width:560px;margin:0 auto;color:#2d1020}
+    h1{color:#e91e8c;text-align:center;font-size:22px;margin-bottom:6px}
+    .date{text-align:center;color:#9d7a8c;font-size:13px;margin-bottom:6px}
+    .stats{display:flex;justify-content:center;gap:36px;margin:14px 0 22px;padding:14px;background:#fff;border-radius:12px;border:1px solid #f0dae8}
+    .stat-n{font-size:26px;font-weight:900;color:#e91e8c;text-align:center}
+    .stat-l{font-size:11px;color:#9d7a8c;text-align:center;margin-top:2px}
+    .card{background:#fff;border-radius:12px;margin-bottom:16px;overflow:hidden;border:1px solid #f0dae8;page-break-inside:avoid}
+    .hero{width:100%;height:200px;object-fit:cover;display:block}
+    .hero-empty{width:100%;height:80px;background:#ffd1e8;display:flex;align-items:center;justify-content:center;font-size:32px}
+    .card-body{padding:13px 15px}
+    .card-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .card-icon{font-size:18px;width:34px;height:34px;background:#ffd1e8;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .card-info{flex:1}.card-info strong{display:block;font-size:14px;color:#2d1020}
+    .card-time{font-size:11px;color:#9d7a8c}
+    .card-done{font-size:18px}
+    .card-desc{font-size:12px;color:#7c5060;line-height:1.9;font-style:italic}
+    .thumbs{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+    .thumb{width:64px;height:64px;object-fit:cover;border-radius:7px}
+    .diary{margin-top:24px;padding:20px 18px;background:#fff;border-radius:12px;border:1px solid #f0dae8;page-break-inside:avoid}
+    .diary-title{font-size:14px;color:#e91e8c;font-weight:700;text-align:center;margin-bottom:14px}
+    .diary-text{font-size:13px;line-height:2.3;color:#4a3040;white-space:pre-wrap;font-family:'Hiragino Mincho ProN','Noto Serif TC',Georgia,serif}
+    .footer{text-align:center;margin-top:22px;font-size:11px;color:#d4bac8;padding-bottom:10px}
+    @media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style></head><body>
+  <h1>🎀 米妮的生日禮物 2026</h1>
+  <div class="date">2026.06.07 · 高雄</div>
+  <div class="stats">
+    <div><div class="stat-n">${cmpl.length}</div><div class="stat-l">關完成</div></div>
+    <div><div class="stat-n">${totalPhotos}</div><div class="stat-l">張照片</div></div>
+  </div>
+  ${rows}
+  ${diaryText?`<div class="diary"><div class="diary-title">✨ 今日日記</div><div class="diary-text">${diaryText.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div></div>`:''}
+  <div class="footer">🎀 米妮生日快樂 2026 · 用心記錄每個美好時刻</div>
+  </body></html>`);
+  w.document.close();setTimeout(()=>w.print(),900);
 }
 
 let _admAuth=false;
@@ -379,8 +442,8 @@ async function genAiTask(id){
   const ta=document.getElementById('adm-ta-'+id);
   btn.textContent='⏳ 生成中…';btn.disabled=true;
   try{
-    const r=await callClaudeRaw([{type:'text',text:'你是旅遊行程助手，請為以下景點生成4到6個具體的打卡任務項目（繁體中文），每項一行，不要編號、不要符號，只要任務文字：\n景點：'+t.title}],500);
-    const items=r.split('\n').map(s=>s.trim()).filter(s=>s).slice(0,6).join('\n');
+    const r=await callClaudeRaw([{type:'text',text:'你是一個專門設計有趣旅遊任務的創意達人。請為以下景點設計1到2個任務（繁體中文）。\n\n設計原則：\n- 有趣、新鮮感、一般人沒想過的角度\n- 類型盡量不同（例如：一個觀察類、一個互動類）\n- 不能影響其他遊客\n- 每項一行，不要編號、不要符號，只要任務文字\n\n景點：'+t.title}],300);
+    const items=r.split('\n').map(s=>s.trim()).filter(s=>s).slice(0,2).join('\n');
     if(ta){ta.value=items;setAdmField(id,'taskItems',items);}
     btn.textContent='✅ 完成';
   }catch(e){btn.textContent='❌ 失敗';}
