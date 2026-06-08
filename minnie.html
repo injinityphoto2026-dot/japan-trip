@@ -285,7 +285,7 @@ function openSummary(){
     <h2 style="font-size:18px;font-weight:800;color:var(--navy);margin:10px 0 8px">生日快樂，米妮！</h2>
     <p style="font-size:13px;color:var(--muted);line-height:2">今天的每一個腳步<br>都是為了讓米妮的生日更特別</p>
     <div style="margin-top:14px;font-size:12px;color:#d4bac8;font-weight:700">🎀 米妮生日快樂 2026</div>
-    <button id="ai-diary-btn" onclick="genAiDiary()" style="margin-top:20px;padding:12px 28px;border-radius:24px;border:none;background:linear-gradient(135deg,#f093fb,#e91e8c);color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px;box-shadow:0 4px 15px rgba(233,30,140,.3)">✨ AI 生成今日日記</button>
+    <button id="ai-diary-btn" onclick="genAiDiary()" style="margin-top:20px;padding:12px 28px;border-radius:24px;border:none;background:linear-gradient(135deg,#f093fb,#e91e8c);color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px;box-shadow:0 4px 15px rgba(233,30,140,.3)">✨ AI 生成旅遊日記</button>
     <div id="ai-diary-out" style="display:none;width:100%;max-width:480px;margin:8px auto 0"></div>
     <button onclick="exportPDF()" style="display:block;margin:20px auto 0;padding:10px 28px;border-radius:4px;border:1px solid #d4bac8;background:none;color:#9d7a8c;font-size:13px;letter-spacing:.08em;cursor:pointer">PDF 匯出</button>
   </div></div>`;
@@ -378,12 +378,12 @@ async function genAiDiary(){
     if(parsed.desc){Object.keys(parsed.desc).forEach(k=>{const task=cwp[parseInt(k)-1];if(task){const el=document.getElementById('s-desc-'+task.id);if(el){el.textContent=parsed.desc[k];el.style.color='#7c5c3e';}}});}
     const secs=parsed.sections||[];
     if(secs.length>0){
-      let h='<div style="margin-top:4px"><div style="text-align:center;font-size:12px;font-weight:700;color:#e91e8c;letter-spacing:.12em;padding:20px 0 4px">✨ 今日日記</div>';
+      let h='<div style="margin-top:4px"><div style="text-align:center;font-size:12px;font-weight:700;color:#e91e8c;letter-spacing:.12em;padding:20px 0 4px">✨ 旅遊日記</div>';
       secs.forEach((txt,i)=>{
         const task=cwp[i];if(!task)return;
         const ph=getPhotos(task.id);const pos=getPhotoPos(task.id);
         h+=`<p style="font-size:13.5px;line-height:2.4;color:#4a3040;padding:14px 22px 0;letter-spacing:.05em;font-family:'Hiragino Mincho ProN','Noto Serif TC',Georgia,serif">${(txt||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`;
-        if(ph.length>0)h+=`<div style="margin:14px 0"><img src="${ph[0]}" style="width:100%;height:220px;object-fit:cover;display:block;object-position:${pos.x}% ${pos.y}%"></div>`;
+        if(ph.length>0)h+=`<div style="margin:14px 0;background:#f5f0ec"><img src="${ph[0]}" style="width:100%;height:auto;display:block"></div>`;
       });
       h+='</div>';
       out.innerHTML=h;
@@ -393,81 +393,37 @@ async function genAiDiary(){
     btn.textContent='🔄 重新生成';btn.disabled=false;
   }catch(e){
     out.innerHTML='<div style="color:#e8715a;padding:12px;text-align:center">生成失敗，請確認網路連線後重試。</div>';
-    btn.textContent='✨ AI 生成今日日記';btn.disabled=false;
+    btn.textContent='✨ AI 生成旅遊日記';btn.disabled=false;
   }
 }
 
 function exportPDF(){
   const w=window.open('','_blank');if(!w){alert('請先允許彈出視窗');return;}
-  const cmpl=gs().c;
-  const descs={};TASKS.forEach(t=>{const el=document.getElementById('s-desc-'+t.id);if(el)descs[t.id]=el.textContent||t.sub;});
-  const totalPhotos=TASKS.reduce((a,t)=>a+getPhotos(t.id).length,0);
-  const rows=TASKS.map(t=>{
-    const done=cmpl.includes(t.id);const ph=getPhotos(t.id);const desc=descs[t.id]||t.sub;const pos=getPhotoPos(t.id);
-    return`<div class="card">
-      ${ph.length>0?`<img class="hero" src="${ph[0]}" style="object-position:${pos.x}% ${pos.y}%">`:
-        `<div class="hero-empty"><span>${t.emoji}</span></div>`}
-      <div class="card-body">
-        <div class="card-head">
-          <div class="card-icon">${t.emoji}</div>
-          <div class="card-info"><strong>${t.title}</strong><span class="card-time">${t.time}</span></div>
-          ${done?'<div class="card-done">✅</div>':''}
-        </div>
-        <div class="card-desc">${desc.replace(/</g,'&lt;')}</div>
-        ${ph.length>1?'<div class="thumbs">'+ph.slice(1).map(u=>`<img class="thumb" src="${u}">`).join('')+'</div>':''}
-      </div>
-    </div>`;
-  }).join('');
   const diaryData=window._diaryData||{};
   const diarySecs=diaryData.parsed&&diaryData.parsed.sections?diaryData.parsed.sections:[];
   const diaryCwp=diaryData.cwp||[];
-  let diaryHtml='';
-  if(diarySecs.length>0){
-    diaryHtml='<div class="diary"><div class="diary-title">✨ 今日日記</div>';
-    diarySecs.forEach((txt,i)=>{
-      const task=diaryCwp[i];if(!task)return;
-      const ph=getPhotos(task.id);const pos=getPhotoPos(task.id);
-      diaryHtml+=`<p class="diary-para">${(txt||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`;
-      if(ph.length>0)diaryHtml+=`<img class="diary-img" src="${ph[0]}" style="object-position:${pos.x}% ${pos.y}%">`;
-    });
-    diaryHtml+='</div>';
-  }
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>米妮的生日禮物 2026</title>
+  if(diarySecs.length===0){alert('請先生成旅遊日記再匯出 PDF');return;}
+  let sections='';
+  diarySecs.forEach((txt,i)=>{
+    const task=diaryCwp[i];if(!task)return;
+    const ph=getPhotos(task.id);
+    sections+=`<p class="para">${(txt||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`;
+    if(ph.length>0)sections+=`<img class="photo" src="${ph[0]}">`;
+  });
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>旅遊日記 · 米妮生日快樂 2026</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'PingFang TC','Hiragino Sans GB',sans-serif;background:#fff8fc;padding:28px 20px;max-width:560px;margin:0 auto;color:#2d1020}
-    h1{color:#e91e8c;text-align:center;font-size:22px;margin-bottom:6px}
-    .date{text-align:center;color:#9d7a8c;font-size:13px;margin-bottom:6px}
-    .stats{display:flex;justify-content:center;gap:36px;margin:14px 0 22px;padding:14px;background:#fff;border-radius:12px;border:1px solid #f0dae8}
-    .stat-n{font-size:26px;font-weight:900;color:#e91e8c;text-align:center}
-    .stat-l{font-size:11px;color:#9d7a8c;text-align:center;margin-top:2px}
-    .card{background:#fff;border-radius:12px;margin-bottom:16px;overflow:hidden;border:1px solid #f0dae8;page-break-inside:avoid}
-    .hero{width:100%;height:200px;object-fit:cover;display:block}
-    .hero-empty{width:100%;height:80px;background:#ffd1e8;display:flex;align-items:center;justify-content:center;font-size:32px}
-    .card-body{padding:13px 15px}
-    .card-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-    .card-icon{font-size:18px;width:34px;height:34px;background:#ffd1e8;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .card-info{flex:1}.card-info strong{display:block;font-size:14px;color:#2d1020}
-    .card-time{font-size:11px;color:#9d7a8c}
-    .card-done{font-size:18px}
-    .card-desc{font-size:12px;color:#7c5060;line-height:1.9;font-style:italic}
-    .thumbs{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-    .thumb{width:64px;height:64px;object-fit:cover;border-radius:7px}
-    .diary{margin-top:24px;background:#fff;border-radius:12px;border:1px solid #f0dae8;padding:20px 0 8px;page-break-inside:avoid}
-    .diary-title{font-size:13px;color:#e91e8c;font-weight:700;text-align:center;margin-bottom:4px;letter-spacing:.1em}
-    .diary-para{font-size:13px;line-height:2.3;color:#4a3040;font-family:'Hiragino Mincho ProN','Noto Serif TC',Georgia,serif;padding:12px 18px 0}
-    .diary-img{width:100%;height:220px;object-fit:cover;display:block;margin-top:14px}
-    .footer{text-align:center;margin-top:22px;font-size:11px;color:#d4bac8;padding-bottom:10px}
-    @media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    body{font-family:'PingFang TC','Hiragino Sans GB',sans-serif;background:#fff8fc;padding:32px 24px;max-width:520px;margin:0 auto;color:#2d1020}
+    h1{color:#e91e8c;text-align:center;font-size:20px;margin-bottom:4px;letter-spacing:.06em}
+    .date{text-align:center;color:#9d7a8c;font-size:12px;margin-bottom:28px}
+    .para{font-size:14px;line-height:2.5;color:#3a2030;font-family:'Hiragino Mincho ProN','Noto Serif TC',Georgia,serif;margin-bottom:4px;letter-spacing:.05em}
+    .photo{width:100%;height:auto;display:block;margin:16px 0;border-radius:6px}
+    .footer{text-align:center;margin-top:28px;font-size:11px;color:#d4bac8;padding-bottom:8px}
+    @media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.photo{page-break-inside:avoid}}
   </style></head><body>
-  <h1>🎀 米妮的生日禮物 2026</h1>
-  <div class="date">2026.06.07 · 高雄</div>
-  <div class="stats">
-    <div><div class="stat-n">${cmpl.length}</div><div class="stat-l">關完成</div></div>
-    <div><div class="stat-n">${totalPhotos}</div><div class="stat-l">張照片</div></div>
-  </div>
-  ${rows}
-  ${diaryHtml}
+  <h1>🎀 旅遊日記</h1>
+  <div class="date">2026.06.07 · 高雄 · 米妮生日快樂</div>
+  ${sections}
   <div class="footer">🎀 米妮生日快樂 2026 · 用心記錄每個美好時刻</div>
   </body></html>`);
   w.document.close();setTimeout(()=>w.print(),900);
