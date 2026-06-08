@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="貓貓生日之旅">
+<meta name="apple-mobile-web-app-title" content="米妮生日之旅">
 <meta name="theme-color" content="#1a365d">
-<title>🐱 貓貓生日之旅</title>
+<title>🐱 米妮生日之旅</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -334,7 +334,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",s
 
 <!-- PASSWORD OVERLAY -->
 <div id="pw-overlay">
-  <h2>🐱 貓貓生日之旅</h2>
+  <h2>🐱 米妮生日之旅</h2>
   <p>請輸入通行密碼</p>
   <input id="pw-input" type="password" placeholder="••••••" onkeydown="if(event.key==='Enter')checkPw()">
   <button id="pw-btn" onclick="checkPw()">解鎖</button>
@@ -395,7 +395,7 @@ function checkPw(){
 
 <!-- HERO -->
 <div class="hero">
-  <h1>貓貓生日之旅</h1>
+  <h1>米妮生日之旅</h1>
   <p>2026.06.16 — 06.19<br>解鎖 21 關，完成最棒的旅行</p>
 </div>
 
@@ -1219,7 +1219,7 @@ function checkPw(){
   </div>
 </div>
 
-<div class="footer">🐱 貓貓生日之旅 2026</div>
+<div class="footer">🐱 米妮生日之旅 2026</div>
 <div class="adm-entry" onclick="openAdmLogin()">⚙️ 管理後台</div>
 
 <!-- FAB -->
@@ -1732,7 +1732,7 @@ function openSummary(){
 
   let html=`<div class="s-hero">
     <div class="s-hero-emoji">🐱</div>
-    <h1>貓貓生日之旅</h1>
+    <h1>米妮生日之旅</h1>
     <div class="s-hero-sub">2026.06.16 — 06.19　日本山梨 · 東京<br>四天三夜，二十一個共同的故事</div>
     <div class="s-stats">
       <div class="s-stat"><span class="s-stat-num">4</span><span class="s-stat-label">天</span></div>
@@ -1788,7 +1788,7 @@ function openSummary(){
     都是這趟旅行最真實的座標。</p>
     <p>富士山見證了這個生日<br>
     而你們一起，寫下了最好的故事。</p>
-    <div class="s-finale-sig">🐱 貓貓生日之旅 2026 · 完</div>
+    <div class="s-finale-sig">🐱 米妮生日之旅 2026 · 完</div>
     ${(()=>{const allDone=gs().c.length>=TOTAL;return`<button id="ai-diary-btn" onclick="${allDone?'genAiDiary()':''}" ${allDone?'':'disabled'}
       style="margin-top:20px;padding:12px 28px;border-radius:24px;border:none;background:${allDone?'linear-gradient(135deg,#f093fb,#f5576c)':'#ccc'};color:#fff;font-size:14px;font-weight:700;${allDone?'cursor:pointer':'cursor:not-allowed'};letter-spacing:.5px;${allDone?'box-shadow:0 4px 15px rgba(245,87,108,.4)':'opacity:.55'}">${allDone?'✨ AI 生成旅遊日記':'🔒 完成全部關卡後開放'}</button>`})()}
     <div id="ai-diary-out" style="display:none;width:100%;max-width:480px;margin:0 auto"></div>
@@ -1822,7 +1822,7 @@ function exportPDF(){
     sections+=`<p class="para">${(txt||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`;
     if(ph.length>0)sections+=`<img class="photo" src="${ph[0]}">`;
   });
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>旅遊日記 · 貓貓生日之旅 2026</title>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>旅遊日記 · 米妮生日之旅 2026</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'PingFang TC','Hiragino Sans GB',sans-serif;background:#fff;padding:32px 24px;max-width:520px;margin:0 auto;color:#2d1020}
@@ -1836,7 +1836,7 @@ function exportPDF(){
   <h1>🐱 旅遊日記</h1>
   <div class="date">2026.06.16 — 06.19 · 日本山梨 · 東京</div>
   ${sections}
-  <div class="footer">🐱 貓貓生日之旅 2026 · 用心記錄每個美好時刻</div>
+  <div class="footer">🐱 米妮生日之旅 2026 · 用心記錄每個美好時刻</div>
   </body></html>`);
   w.document.close();
   setTimeout(function(){try{w.focus();w.print();}catch(e){}},900);
@@ -1861,7 +1861,7 @@ function buildPrintHTML(){
   }).join('');
 
   return`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8">
-<title>貓貓生日之旅 2026</title><style>
+<title>米妮生日之旅 2026</title><style>
 @page{size:A4;margin:14mm 16mm}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"PingFang TC","Noto Sans TC",Helvetica,sans-serif;color:#2a2420;font-size:13px}
@@ -1897,7 +1897,7 @@ body{font-family:"PingFang TC","Noto Sans TC",Helvetica,sans-serif;color:#2a2420
 </style></head><body>
 <div class="cover">
   <div class="ce">🐱</div>
-  <div class="ct">貓貓生日之旅</div>
+  <div class="ct">米妮生日之旅</div>
   <div class="cs">2026.06.16 — 06.19　日本山梨 · 東京<br>四天三夜，二十一個共同的故事</div>
   <div class="cst">
     <div><span class="csn">4</span><span class="csl">天</span></div>
@@ -1910,7 +1910,7 @@ ${blocks}
   <div class="fin-e">🏅</div>
   <div class="fin-h">21 關，全數完成。</div>
   <div class="fin-p">每一個景點、每一頓美食<br>每一張合照、每一個許下的願望<br>都是這趟旅行最真實的座標。<br><br>富士山見證了這個生日<br>而你們一起，寫下了最好的故事。</div>
-  <div class="fin-s">🐱 貓貓生日之旅 2026 · 完</div>
+  <div class="fin-s">🐱 米妮生日之旅 2026 · 完</div>
 </div>
 </body></html>`;
 }
@@ -1960,7 +1960,7 @@ async function generatePoster(){
       const b64=best.url.replace(/^data:[^;]+;base64,/,'');
       const arr=[
         {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
-        {type:'text',text:'這是一張旅遊照片，拍攝地點是「'+best.name+'」（日本貓貓生日之旅 2026）。\n請根據這張照片的視覺元素、色調與氛圍，生成一段英文的 ChatGPT 圖像生成提示詞，讓 ChatGPT 可以製作一張精美的旅遊海報。\n\n要求：\n- 風格：日系簡約（Japanese minimalist）\n- 尺寸：9:16 直式\n- 融入照片中的主要景物、光線與色彩特徵\n- 加入日文排版元素：標題「貓貓生日之旅」或英文「Neko Birthday Trip 2026」\n- 包含地名「'+best.name+'」作為副標\n- 保留乾淨留白空間，字體清雅\n- 長度 150–200 字\n\n請直接輸出英文提示詞，不要加任何前言或說明。'}
+        {type:'text',text:'這是一張旅遊照片，拍攝地點是「'+best.name+'」（日本米妮生日之旅 2026）。\n請根據這張照片的視覺元素、色調與氛圍，生成一段英文的 ChatGPT 圖像生成提示詞，讓 ChatGPT 可以製作一張精美的旅遊海報。\n\n要求：\n- 風格：日系簡約（Japanese minimalist）\n- 尺寸：9:16 直式\n- 融入照片中的主要景物、光線與色彩特徵\n- 加入日文排版元素：標題「米妮生日之旅」或英文「Neko Birthday Trip 2026」\n- 包含地名「'+best.name+'」作為副標\n- 保留乾淨留白空間，字體清雅\n- 長度 150–200 字\n\n請直接輸出英文提示詞，不要加任何前言或說明。'}
       ];
       prompt=await callClaudeRaw(arr,450);
     }
