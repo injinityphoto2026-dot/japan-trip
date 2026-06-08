@@ -368,20 +368,21 @@ async function genAiDiary(){
   const cmpl=gs().c;const arr=[];
   TASKS.forEach(t=>{const ph=getPhotos(t.id);if(ph.length>0&&cmpl.includes(t.id)){const b64=ph[0].replace(/^data:[^;]+;base64,/,'');arr.push({type:'text',text:'任務'+t.id+'（'+t.title+'）的照片：'});arr.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}});}});
   const cwp=TASKS.filter(t=>cmpl.includes(t.id)&&getPhotos(t.id).length>0);
-  const taskList=cwp.map(t=>t.id+'（'+t.title+'）').join('、');
-  arr.push({type:'text',text:'這是一趟高雄午後的行程：鳳山捷運站→美麗島站光之穹頂→漢神巨蛋購物尋找米妮生日禮物。請根據照片，用繁體中文完成：\n1. 為每個任務生成一句15字以內的溫馨描述\n2. 按任務順序為每個地點各寫一段日記（每段40-60字，日系簡約、溫馨感性），地點：'+taskList+'\n\n只回覆純JSON，不加markdown：{"desc":{"任務編號":"描述"},"sections":[{"id":"任務編號","text":"段落"}]}'});
+  const taskList=cwp.map((t,i)=>'段落'+(i+1)+'：'+t.title).join('、');
+  arr.push({type:'text',text:'這是一趟高雄午後的行程：鳳山捷運站→美麗島站光之穹頂→漢神巨蛋購物尋找米妮生日禮物。請根據照片，用繁體中文完成：\n1. 為每個地點生成一句15字以內的溫馨描述（key用數字1到'+cwp.length+'）\n2. 按順序為每個地點各寫一段日記（每段40-60字，日系簡約、溫馨感性）\n地點順序：'+taskList+'\n\n只回覆純JSON，不加markdown：{"desc":{"1":"描述1","2":"描述2",...},"sections":["段落1文字","段落2文字",...]}'});
   try{
     const raw=await callClaudeRaw(arr,2200);
     const m=raw.match(/\{[\s\S]*\}/);let parsed={desc:{},sections:[]};
     try{if(m)parsed=JSON.parse(m[0]);}catch(e){}
-    window._diaryData=parsed;
-    if(parsed.desc){Object.keys(parsed.desc).forEach(id=>{const el=document.getElementById('s-desc-'+id);if(el){el.textContent=parsed.desc[id];el.style.color='#7c5c3e';}});}
+    window._diaryData={parsed,cwp};
+    if(parsed.desc){Object.keys(parsed.desc).forEach(k=>{const task=cwp[parseInt(k)-1];if(task){const el=document.getElementById('s-desc-'+task.id);if(el){el.textContent=parsed.desc[k];el.style.color='#7c5c3e';}}});}
     const secs=parsed.sections||[];
     if(secs.length>0){
       let h='<div style="margin-top:4px"><div style="text-align:center;font-size:12px;font-weight:700;color:#e91e8c;letter-spacing:.12em;padding:20px 0 4px">✨ 今日日記</div>';
-      secs.forEach(sec=>{
-        const tid=parseInt(sec.id);const ph=getPhotos(tid);const pos=getPhotoPos(tid);
-        h+=`<p style="font-size:13.5px;line-height:2.4;color:#4a3040;padding:14px 22px 0;letter-spacing:.05em;font-family:'Hiragino Mincho ProN','Noto Serif TC',Georgia,serif">${(sec.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`;
+      secs.forEach((txt,i)=>{
+        const task=cwp[i];if(!task)return;
+        const ph=getPhotos(task.id);const pos=getPhotoPos(task.id);
+        h+=`<p style="font-size:13.5px;line-height:2.4;color:#4a3040;padding:14px 22px 0;letter-spacing:.05em;font-family:'Hiragino Mincho ProN','Noto Serif TC',Georgia,serif">${(txt||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`;
         if(ph.length>0)h+=`<div style="margin:14px 0"><img src="${ph[0]}" style="width:100%;height:220px;object-fit:cover;display:block;object-position:${pos.x}% ${pos.y}%"></div>`;
       });
       h+='</div>';
@@ -418,13 +419,15 @@ function exportPDF(){
     </div>`;
   }).join('');
   const diaryData=window._diaryData||{};
-  const secs=diaryData.sections||[];
+  const diarySecs=diaryData.parsed&&diaryData.parsed.sections?diaryData.parsed.sections:[];
+  const diaryCwp=diaryData.cwp||[];
   let diaryHtml='';
-  if(secs.length>0){
+  if(diarySecs.length>0){
     diaryHtml='<div class="diary"><div class="diary-title">✨ 今日日記</div>';
-    secs.forEach(sec=>{
-      const tid=parseInt(sec.id);const ph=getPhotos(tid);const pos=getPhotoPos(tid);
-      diaryHtml+=`<p class="diary-para">${(sec.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`;
+    diarySecs.forEach((txt,i)=>{
+      const task=diaryCwp[i];if(!task)return;
+      const ph=getPhotos(task.id);const pos=getPhotoPos(task.id);
+      diaryHtml+=`<p class="diary-para">${(txt||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`;
       if(ph.length>0)diaryHtml+=`<img class="diary-img" src="${ph[0]}" style="object-position:${pos.x}% ${pos.y}%">`;
     });
     diaryHtml+='</div>';
