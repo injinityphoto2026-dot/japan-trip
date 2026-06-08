@@ -381,9 +381,6 @@ function checkPw(){
     <button class="s-back" onclick="closeSummary()">&#8592;</button>
     <div class="s-snav-title">🐱 旅程總結</div>
   </div>
-  <div class="s-actions">
-    <button class="s-abtn s-abtn-poster" onclick="generatePoster()">🤖 AI 精選海報</button>
-  </div>
   <div id="s-content"></div>
 </div>
 
@@ -1424,9 +1421,9 @@ async function genAiDiary(){
   const taskList=photoLids.map(function(lid,i){return '段落'+(i+1)+'：'+(NAMES[lid]||'第'+lid+'關');}).join('、');
 
   if(contentArr.length>0){
-    contentArr.push({type:'text',text:'你是一位溫柔的旅遊作家。以上是這趟日本旅程（'+spots+'）中各景點的照片。\n\n請用繁體中文完成：\n1. 為每個景點生成一句20字以內的溫馨描述（key用1到'+photoLids.length+'的數字）\n2. 按順序為每個景點各寫一段日記（每段50-80字，溫馨感性），地點：'+taskList+'\n\n只回覆純JSON，不加markdown：{"desc":{"1":"描述1","2":"描述2",...},"sections":["段落1","段落2",...]}'});
+    contentArr.push({type:'text',text:'你是一位溫柔的旅遊作家。以上是這趟日本旅程（'+spots+'）中各景點的照片。\n\n請用繁體中文完成：\n1. 為每個景點生成一句20字以內的溫馨描述（key用1到'+photoLids.length+'的數字）\n2. 按順序為每個景點各寫一段日記（每段嚴格限制30-40字，約3行內，溫馨感性），地點：'+taskList+'\n\n只回覆純JSON，不加markdown：{"desc":{"1":"描述1","2":"描述2",...},"sections":["段落1","段落2",...]}'});
   }else{
-    contentArr.push({type:'text',text:'旅程：'+spots+'\n完成'+completed.length+'關。\n請用繁體中文為每個地點各寫一段日記（每段50-80字，溫馨感性）。\n只回覆純JSON：{"desc":{},"sections":["段落1","段落2",...]}'});
+    contentArr.push({type:'text',text:'旅程：'+spots+'\n完成'+completed.length+'關。\n請用繁體中文為每個地點各寫一段日記（每段嚴格限制30-40字，約3行內，溫馨感性）。\n只回覆純JSON：{"desc":{},"sections":["段落1","段落2",...]}'});
   }
 
   try{
@@ -1795,10 +1792,12 @@ function openSummary(){
     ${(()=>{const allDone=gs().c.length>=TOTAL;return`<button id="ai-diary-btn" onclick="${allDone?'genAiDiary()':''}" ${allDone?'':'disabled'}
       style="margin-top:20px;padding:12px 28px;border-radius:24px;border:none;background:${allDone?'linear-gradient(135deg,#f093fb,#f5576c)':'#ccc'};color:#fff;font-size:14px;font-weight:700;${allDone?'cursor:pointer':'cursor:not-allowed'};letter-spacing:.5px;${allDone?'box-shadow:0 4px 15px rgba(245,87,108,.4)':'opacity:.55'}">${allDone?'✨ AI 生成旅遊日記':'🔒 完成全部關卡後開放'}</button>`})()}
     <div id="ai-diary-out" style="display:none;width:100%;max-width:480px;margin:0 auto"></div>
-    <button onclick="exportPDF()"
-      style="margin-top:24px;padding:10px 28px;border-radius:4px;border:1px solid #c8c2b8;background:none;color:#7a7268;font-size:13px;letter-spacing:.08em;cursor:pointer;font-family:inherit">
-      PDF 匯出
-    </button>
+    <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button onclick="generatePoster()"
+        style="padding:10px 22px;border-radius:24px;border:none;background:linear-gradient(135deg,#fff3f0,#ffeef5);color:#c0392b;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.04em;box-shadow:0 2px 8px rgba(200,60,40,.15)">🖼️ 精選海報</button>
+      <button onclick="exportPDF()"
+        style="padding:10px 22px;border-radius:4px;border:1px solid #c8c2b8;background:none;color:#7a7268;font-size:13px;letter-spacing:.08em;cursor:pointer;font-family:inherit">PDF 匯出</button>
+    </div>
   </div></div>`;
 
   content.innerHTML=html;
