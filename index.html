@@ -1405,7 +1405,6 @@ async function genAiDiary(){
   out.innerHTML='<div style="text-align:center;padding:20px;color:#888;font-size:13px">正在分析照片並撰寫旅遊日記，請稍候…</div>';
 
   const completed=gs().c;
-  let totalPhotos=0;for(let i=1;i<=TOTAL;i++)totalPhotos+=getPhotos(i).length;
   const contentArr=[];
   const photoLids=[];
 
@@ -1414,7 +1413,7 @@ async function genAiDiary(){
       const photos=getPhotos(lid);
       if(photos.length>0&&completed.includes(lid)){
         const b64=photos[0].replace(/^data:[^;]+;base64,/,'');
-        contentArr.push({type:'text',text:'景點'+lid+'（'+( NAMES[lid]||'第'+lid+'關')+'）的照片：'});
+        contentArr.push({type:'text',text:'景點'+lid+'（'+(NAMES[lid]||'第'+lid+'關')+'）的照片：'});
         contentArr.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}});
         photoLids.push(lid);
       }
@@ -1422,29 +1421,41 @@ async function genAiDiary(){
   });
 
   const spots=DAYS.map(function(d){return d.name+'：'+d.levels.map(function(l){return NAMES[l]||'第'+l+'關';}).join('、');}).join('\n');
-  const instruction='你是一位溫柔的旅遊作家。以上是這趟日本旅程（'+spots+'）中各景點的照片。\n\n請用繁體中文完成：\n1. 根據每張照片，為對應景點生成一句20字以內的溫馨描述\n2. 寫一篇整體旅遊日記（250字以內，溫馨感性）\n\n請只回覆純JSON，不要加markdown：{"desc":{"景點編號":"描述"},"diary":"日記"}';
+  const taskList=photoLids.map(function(lid,i){return '段落'+(i+1)+'：'+(NAMES[lid]||'第'+lid+'關');}).join('、');
+
   if(contentArr.length>0){
-    contentArr.push({type:'text',text:instruction});
+    contentArr.push({type:'text',text:'你是一位溫柔的旅遊作家。以上是這趟日本旅程（'+spots+'）中各景點的照片。\n\n請用繁體中文完成：\n1. 為每個景點生成一句20字以內的溫馨描述（key用1到'+photoLids.length+'的數字）\n2. 按順序為每個景點各寫一段日記（每段50-80字，溫馨感性），地點：'+taskList+'\n\n只回覆純JSON，不加markdown：{"desc":{"1":"描述1","2":"描述2",...},"sections":["段落1","段落2",...]}'});
   }else{
-    contentArr.push({type:'text',text:'旅程：'+spots+'\n完成'+completed.length+'關，共'+totalPhotos+'張照片。\n請用繁體中文寫旅遊日記（250字內）。\n只回覆純JSON：{"desc":{},"diary":"日記"}'});
+    contentArr.push({type:'text',text:'旅程：'+spots+'\n完成'+completed.length+'關。\n請用繁體中文為每個地點各寫一段日記（每段50-80字，溫馨感性）。\n只回覆純JSON：{"desc":{},"sections":["段落1","段落2",...]}'});
   }
 
   try{
     const raw=await callClaudeRaw(contentArr,2200);
     const m=raw.match(/\{[\s\S]*\}/);
-    let parsed={desc:{},diary:''};
-    try{if(m)parsed=JSON.parse(m[0]);}catch(e){parsed.diary=raw;}
+    let parsed={desc:{},sections:[]};
+    try{if(m)parsed=JSON.parse(m[0]);}catch(e){}
+    window._diaryData={parsed,cwp:photoLids};
 
     if(parsed.desc){
-      Object.keys(parsed.desc).forEach(function(lid){
-        const el=document.getElementById('s-desc-'+lid);
-        if(el){el.textContent=parsed.desc[lid];el.style.color='#7c5c3e';}
+      Object.keys(parsed.desc).forEach(function(k){
+        const lid=photoLids[parseInt(k)-1];
+        if(lid){const el=document.getElementById('s-desc-'+lid);if(el){el.textContent=parsed.desc[k];el.style.color='#7c5c3e';}}
       });
     }
-    const diaryText=parsed.diary||'';
-    out.innerHTML=diaryText
-      ?'<div style="background:#fafaf8;border-top:1px solid #dedad4;border-bottom:1px solid #dedad4;padding:28px 20px;margin-top:16px;text-align:left;font-size:13.5px;line-height:2.5;color:#4a453e;white-space:pre-wrap;letter-spacing:0.06em;font-family:\'Hiragino Mincho ProN\',\'Noto Serif TC\',Georgia,serif">'+diaryText.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>'
-      :'';
+    const secs=parsed.sections||[];
+    if(secs.length>0){
+      let h='<div style="margin-top:4px"><div style="text-align:center;font-size:12px;font-weight:700;color:#e8715a;letter-spacing:.12em;padding:20px 0 4px">✨ 旅遊日記</div>';
+      secs.forEach(function(txt,i){
+        const lid=photoLids[i];if(!lid)return;
+        const ph=getPhotos(lid);const pos=getPhotoPos(lid);
+        h+=`<p style="font-size:13.5px;line-height:2.4;color:#4a3040;padding:14px 22px 0;letter-spacing:.05em;font-family:'Hiragino Mincho ProN','Noto Serif TC',Georgia,serif">${(txt||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`;
+        if(ph.length>0)h+=`<div style="margin:14px 0;background:#f5f0ec"><img src="${ph[0]}" style="width:100%;height:auto;display:block"></div>`;
+      });
+      h+='</div>';
+      out.innerHTML=h;
+    }else{
+      out.innerHTML='<div style="color:#e8715a;padding:12px;text-align:center">格式異常，請重試。</div>';
+    }
     btn.textContent='🔄 重新生成';btn.disabled=false;
   }catch(e){
     out.innerHTML='<div style="color:#e8715a;padding:12px;text-align:center">生成失敗，請確認網路連線後重試。</div>';
@@ -1638,6 +1649,49 @@ function closeLbox(){
   document.getElementById('lbox-img').src='';
 }
 
+function getPhotoPos(id){const p=localStorage.getItem('fjt26_ppos_'+id);return p?JSON.parse(p):{x:50,y:50};}
+function setPhotoPos(id,x,y){localStorage.setItem('fjt26_ppos_'+id,JSON.stringify({x,y}));}
+function openPosEditor(id){
+  const photos=getPhotos(id);if(!photos.length)return;
+  const pos=getPhotoPos(id);
+  const ov=document.createElement('div');ov.id='pos-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9700;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px';
+  ov.innerHTML=`<div style="width:100%;max-width:380px">
+    <div style="text-align:center;color:#fff;font-size:14px;font-weight:700;margin-bottom:8px">拖曳設定照片焦點</div>
+    <div style="text-align:center;color:rgba(255,255,255,.5);font-size:11px;margin-bottom:10px">點一下或拖曳白圈到想保留的重點位置</div>
+    <div id="pos-wrap" style="position:relative;width:100%;height:240px;border-radius:12px;overflow:hidden;cursor:crosshair;touch-action:none;user-select:none">
+      <img id="pos-img" src="${photos[0]}" style="width:100%;height:100%;object-fit:cover;object-position:${pos.x}% ${pos.y}%;pointer-events:none;display:block">
+      <div id="pos-cross" style="position:absolute;width:30px;height:30px;border:3px solid #fff;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 0 2px rgba(0,0,0,.5),0 0 12px rgba(255,255,255,.4);left:${pos.x}%;top:${pos.y}%"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button onclick="document.getElementById('pos-ov').remove()" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid rgba(255,255,255,.25);background:none;color:#fff;font-size:14px;cursor:pointer">取消</button>
+      <button onclick="savePosAndClose(${id})" style="flex:1;padding:12px;border-radius:10px;border:none;background:#e8715a;color:#fff;font-size:14px;font-weight:700;cursor:pointer">儲存</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  window._posEdit={x:pos.x,y:pos.y};
+  const wrap=document.getElementById('pos-wrap');
+  const img=document.getElementById('pos-img');
+  const cross=document.getElementById('pos-cross');
+  function upd(cx,cy){
+    const r=wrap.getBoundingClientRect();
+    const x=Math.max(0,Math.min(100,((cx-r.left)/r.width)*100));
+    const y=Math.max(0,Math.min(100,((cy-r.top)/r.height)*100));
+    window._posEdit={x,y};img.style.objectPosition=x+'% '+y+'%';
+    cross.style.left=x+'%';cross.style.top=y+'%';
+  }
+  wrap.addEventListener('mousedown',e=>{e.preventDefault();upd(e.clientX,e.clientY);});
+  wrap.addEventListener('mousemove',e=>{if(e.buttons)upd(e.clientX,e.clientY);});
+  wrap.addEventListener('touchstart',e=>{e.preventDefault();upd(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
+  wrap.addEventListener('touchmove',e=>{e.preventDefault();upd(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
+}
+function savePosAndClose(id){
+  const p=window._posEdit||{x:50,y:50};
+  setPhotoPos(id,p.x,p.y);
+  document.querySelectorAll('[data-pos-id="'+id+'"]').forEach(img=>{img.style.objectPosition=p.x+'% '+p.y+'%';});
+  document.getElementById('pos-ov').remove();
+}
+
 // ── SUMMARY DATA ──
 const EMOJIS={
   1:"✈️",2:"🏪",3:"🚗",4:"⛽",5:"🍽️",6:"⛩️",7:"🏨",8:"🍵",
@@ -1712,8 +1766,13 @@ function openSummary(){
           <div class="s-mnum">${String(lid).padStart(2,'0')}</div>
         </div>`;
       if(photos.length>0){
+        const pos0=getPhotoPos(lid);
         html+=`<div class="s-photos">`;
-        photos.forEach(url=>{html+=`<div class="s-photo" onclick="openLbox('${url}')"><img src="${url}" loading="lazy"></div>`});
+        html+=`<div style="position:relative;flex-shrink:0;width:92px;height:92px">
+          <div class="s-photo" onclick="openLbox('${photos[0]}')"><img src="${photos[0]}" loading="lazy" data-pos-id="${lid}" style="object-position:${pos0.x}% ${pos0.y}%"></div>
+          <button onclick="openPosEditor(${lid})" style="position:absolute;bottom:3px;right:3px;background:rgba(0,0,0,.45);border:none;color:#fff;border-radius:10px;padding:2px 5px;font-size:10px;cursor:pointer;line-height:1.4">✏️</button>
+        </div>`;
+        photos.slice(1).forEach(url=>{html+=`<div class="s-photo" onclick="openLbox('${url}')"><img src="${url}" loading="lazy"></div>`});
         html+=`</div>`;
       }else{
         html+=`<div class="s-nophoto">尚未上傳照片</div>`;
@@ -1749,12 +1808,37 @@ function closeSummary(){document.getElementById('spanel').classList.remove('open
 
 // ── PDF EXPORT ──
 function exportPDF(){
-  const html=buildPrintHTML();
+  const diaryData=window._diaryData||{};
+  const diarySecs=diaryData.parsed&&diaryData.parsed.sections?diaryData.parsed.sections:[];
+  const diaryCwp=diaryData.cwp||[];
+  if(diarySecs.length===0){alert('請先生成旅遊日記再匯出 PDF');return;}
   const w=window.open('','_blank');
   if(!w){alert('請先允許彈出視窗，再點一次「匯出 PDF」');return;}
-  w.document.write(html);
+  let sections='';
+  diarySecs.forEach(function(txt,i){
+    const lid=diaryCwp[i];if(!lid)return;
+    const ph=getPhotos(lid);
+    sections+=`<p class="para">${(txt||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>`;
+    if(ph.length>0)sections+=`<img class="photo" src="${ph[0]}">`;
+  });
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>旅遊日記 · 貓貓生日之旅 2026</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'PingFang TC','Hiragino Sans GB',sans-serif;background:#fff;padding:32px 24px;max-width:520px;margin:0 auto;color:#2d1020}
+    h1{color:#e8715a;text-align:center;font-size:20px;margin-bottom:4px;letter-spacing:.06em}
+    .date{text-align:center;color:#8c8480;font-size:12px;margin-bottom:28px}
+    .para{font-size:14px;line-height:2.5;color:#3a2030;font-family:'Hiragino Mincho ProN','Noto Serif TC',Georgia,serif;margin-bottom:4px;letter-spacing:.05em}
+    .photo{width:100%;height:auto;display:block;margin:16px 0;border-radius:6px}
+    .footer{text-align:center;margin-top:28px;font-size:11px;color:#c8c2b8;padding-bottom:8px}
+    @media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.photo{page-break-inside:avoid}}
+  </style></head><body>
+  <h1>🐱 旅遊日記</h1>
+  <div class="date">2026.06.16 — 06.19 · 日本山梨 · 東京</div>
+  ${sections}
+  <div class="footer">🐱 貓貓生日之旅 2026 · 用心記錄每個美好時刻</div>
+  </body></html>`);
   w.document.close();
-  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},900);
+  setTimeout(function(){try{w.focus();w.print();}catch(e){}},900);
 }
 
 function buildPrintHTML(){
