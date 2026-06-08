@@ -1358,10 +1358,18 @@ async function genAiTask(id){
   const ta=document.getElementById('adm-i-ti'+id);
   if(!btn||!ta)return;
   const taskName=(document.getElementById('adm-i-t'+id)||{}).value||NAMES[id]||'第'+id+'關';
+  const taskSub=(document.getElementById('adm-i-s'+id)||{}).value||'';
+  const taskTime=(document.getElementById('adm-i-tm'+id)||{}).value||'';
+  const taskTitle=(document.getElementById('adm-i-tt'+id)||{}).value||'';
+  const ctx=[];
+  if(taskName)ctx.push('景點名稱：'+taskName);
+  if(taskSub)ctx.push('卡片說明：'+taskSub);
+  if(taskTime)ctx.push('時間：'+taskTime);
+  if(taskTitle)ctx.push('任務大標題：'+taskTitle);
   btn.textContent='⏳ 生成中…';btn.disabled=true;
   try{
     const result=await callClaude(
-      '你是一個專門設計有趣旅遊任務的創意達人。請為以下日本景點設計1到2個任務（繁體中文）。\n\n設計原則：\n- 有趣、新鮮感、一般人沒想過的角度\n- 類型盡量不同（例如：一個觀察類、一個互動類）\n- 不能影響其他遊客\n- 每項一行，不要編號、不要符號，只要任務文字\n\n景點：'+taskName
+      '你是一個專門設計有趣旅遊任務的創意達人。請根據以下景點資訊，設計1到2個任務（繁體中文）。\n\n設計原則：\n- 有趣、新鮮感、一般人沒想過的角度\n- 類型盡量不同（例如：一個觀察類、一個互動類）\n- 符合當下時間與地點情境\n- 不能影響其他遊客\n- 每項一行，不要編號、不要符號，只要任務文字\n\n'+ctx.join('\n')
     );
     const items=result.split('\n').map(function(s){return s.trim();}).filter(function(s){return s;}).slice(0,2).join('\n');
     ta.value=items;
