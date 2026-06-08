@@ -1745,12 +1745,14 @@ function openSummary(){
   </div><div class="s-body">`;
 
   DAYS.forEach((day,di)=>{
+    const doneLids=day.levels.filter(lid=>isCmpl(lid));
+    if(!doneLids.length)return;
     const isBday=di===2;
     html+=`<div class="s-day-header">
       <div class="s-day-pill${isBday?' bday':''}">${day.name}</div>
       <div class="s-day-quote">${DAY_QUOTES[di]}</div>
     </div>`;
-    day.levels.forEach(lid=>{
+    doneLids.forEach(lid=>{
       const photos=getPhotos(lid);
       const em=EMOJIS[lid]||'📍';
       const isBoss=lid===11,isBdayL=lid===16;
@@ -1790,8 +1792,8 @@ function openSummary(){
     <p>富士山見證了這個生日<br>
     而你們一起，寫下了最好的故事。</p>
     <div class="s-finale-sig">🐱 貓貓生日之旅 2026 · 完</div>
-    <button id="ai-diary-btn" onclick="genAiDiary()"
-      style="margin-top:20px;padding:12px 28px;border-radius:24px;border:none;background:linear-gradient(135deg,#f093fb,#f5576c);color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.5px;box-shadow:0 4px 15px rgba(245,87,108,.4)">✨ AI 生成旅遊日記</button>
+    ${(()=>{const allDone=gs().c.length>=TOTAL;return`<button id="ai-diary-btn" onclick="${allDone?'genAiDiary()':''}" ${allDone?'':'disabled'}
+      style="margin-top:20px;padding:12px 28px;border-radius:24px;border:none;background:${allDone?'linear-gradient(135deg,#f093fb,#f5576c)':'#ccc'};color:#fff;font-size:14px;font-weight:700;${allDone?'cursor:pointer':'cursor:not-allowed'};letter-spacing:.5px;${allDone?'box-shadow:0 4px 15px rgba(245,87,108,.4)':'opacity:.55'}">${allDone?'✨ AI 生成旅遊日記':'🔒 完成全部關卡後開放'}</button>`})()}
     <div id="ai-diary-out" style="display:none;width:100%;max-width:480px;margin:0 auto"></div>
     <button onclick="exportPDF()"
       style="margin-top:24px;padding:10px 28px;border-radius:4px;border:1px solid #c8c2b8;background:none;color:#7a7268;font-size:13px;letter-spacing:.08em;cursor:pointer;font-family:inherit">
@@ -1947,90 +1949,39 @@ async function generatePoster(){
   const pbtn=document.querySelector('.s-abtn-poster');
   if(pbtn){pbtn.disabled=true;pbtn.textContent='🔍 AI 分析中...';}
   const best=await pickBestPhotoAI();
-  if(pbtn){pbtn.disabled=false;pbtn.textContent='🖼️ 製作旅遊海報';}
-  if(!best){alert('請先上傳至少一張照片才能製作旅遊海報！');return;}
-  const W=1080,H=1620,PAD=72;
-  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
-  const ctx=cv.getContext('2d');
-  const img=new Image();
-  img.onload=()=>{
-    // ── Photo background (cover fill) ──
-    const sc=Math.max(W/img.width,H/img.height);
-    const sw=img.width*sc,sh=img.height*sc;
-    ctx.drawImage(img,(W-sw)/2,(H-sh)/2,sw,sh);
-
-    // ── Overlays ──
-    ctx.fillStyle='rgba(8,18,38,0.36)';ctx.fillRect(0,0,W,H);
-    const tg=ctx.createLinearGradient(0,0,0,H*0.42);
-    tg.addColorStop(0,'rgba(8,18,38,0.82)');tg.addColorStop(1,'rgba(8,18,38,0)');
-    ctx.fillStyle=tg;ctx.fillRect(0,0,W,H);
-    const bg=ctx.createLinearGradient(0,H*0.47,0,H);
-    bg.addColorStop(0,'rgba(8,18,38,0)');bg.addColorStop(1,'rgba(8,18,38,0.95)');
-    ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-
-    // ── Top rule + labels ──
-    ctx.strokeStyle='rgba(255,255,255,0.28)';ctx.lineWidth=1;
-    pline(ctx,PAD,PAD,W-PAD,PAD);
-    ctx.fillStyle='rgba(255,255,255,0.42)';ctx.textAlign='left';
-    ctx.font='300 20px Helvetica,Arial,sans-serif';
-    ctx.fillText('JAPAN TRAVEL',PAD,PAD-14);
-    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.textAlign='right';
-    ctx.font='700 20px Helvetica,Arial,sans-serif';
-    ctx.fillText('2026',W-PAD,PAD-14);
-
-    // ── Decorative giant faint year ──
-    ctx.fillStyle='rgba(255,255,255,0.028)';
-    ctx.font='800 300px Helvetica,Arial,sans-serif';
-    ctx.textAlign='center';ctx.fillText('2026',W/2,H*0.52);
-
-    // ── Japanese stamp (top-right) ──
-    const [sx,sy]=[W-PAD-54,174];
-    ctx.strokeStyle='rgba(200,45,45,0.8)';ctx.lineWidth=2;
-    ctx.beginPath();ctx.arc(sx,sy,50,0,Math.PI*2);ctx.stroke();
-    ctx.beginPath();ctx.arc(sx,sy,44,0,Math.PI*2);ctx.stroke();
-    ctx.fillStyle='rgba(200,45,45,0.78)';ctx.textAlign='center';
-    ctx.font='bold 19px Helvetica,Arial,sans-serif';ctx.fillText('日本',sx,sy-4);
-    ctx.font='300 13px Helvetica,Arial,sans-serif';ctx.fillText('NIPPON',sx,sy+14);
-
-    // ── Subtle mid horizontal rule ──
-    ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;
-    pline(ctx,PAD,H*0.37,W*0.42,H*0.37);
-
-    // ── Bottom text block ──
-    const y0=H-440;
-    ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1.5;
-    pline(ctx,PAD,y0,PAD+168,y0);
-
-    ctx.fillStyle='#ffffff';ctx.textAlign='left';
-    ctx.font='800 72px "PingFang TC","Noto Sans TC",sans-serif';
-    ctx.fillText('貓貓生日之旅',PAD,y0+94);
-
-    ctx.fillStyle='rgba(255,255,255,0.4)';
-    ctx.font='300 21px Helvetica,Arial,sans-serif';
-    pspaced(ctx,'NEKO NO BIRTHDAY TRIP',PAD,y0+140,3.5);
-
-    ctx.fillStyle='rgba(255,255,255,0.62)';
-    ctx.font='400 20px Helvetica,Arial,sans-serif';
-    ctx.fillText('KAWAGUCHIKO  ·  YAMANASHI  ·  TOKYO',PAD,y0+190);
-
-    ctx.fillStyle='rgba(255,255,255,0.4)';
-    ctx.font='300 20px Helvetica,Arial,sans-serif';
-    ctx.fillText('2026 . 06 . 16 — 06 . 19',PAD,y0+236);
-
-    // ── Bottom rule + credits ──
-    ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
-    pline(ctx,PAD,H-82,W-PAD,H-82);
-    ctx.fillStyle='rgba(255,255,255,0.26)';
-    ctx.font='300 17px Helvetica,Arial,sans-serif';
-    ctx.textAlign='left';ctx.fillText('🐱 貓貓生日之旅 2026',PAD,H-57);
-    ctx.textAlign='right';ctx.fillText(best.name,W-PAD,H-57);
-
-    // ── Download ──
-    const a=document.createElement('a');
-    a.download='貓貓生日之旅_旅遊海報.jpg';
-    a.href=cv.toDataURL('image/jpeg',0.92);a.click();
-  };
-  img.src=best.url;
+  if(!best){
+    if(pbtn){pbtn.disabled=false;pbtn.textContent='🤖 AI 精選海報';}
+    alert('請先上傳至少一張照片才能製作旅遊海報！');return;
+  }
+  if(pbtn){pbtn.textContent='✍️ 生成提示詞...';}
+  let prompt='';
+  try{
+    const key=getClaudeKey();
+    if(key){
+      const b64=best.url.replace(/^data:[^;]+;base64,/,'');
+      const arr=[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
+        {type:'text',text:'這是一張旅遊照片，拍攝地點是「'+best.name+'」（日本貓貓生日之旅 2026）。\n請根據這張照片的視覺元素、色調與氛圍，生成一段英文的 ChatGPT 圖像生成提示詞，讓 ChatGPT 可以製作一張精美的旅遊海報。\n\n要求：\n- 風格：日系簡約（Japanese minimalist）\n- 尺寸：9:16 直式\n- 融入照片中的主要景物、光線與色彩特徵\n- 加入日文排版元素：標題「貓貓生日之旅」或英文「Neko Birthday Trip 2026」\n- 包含地名「'+best.name+'」作為副標\n- 保留乾淨留白空間，字體清雅\n- 長度 150–200 字\n\n請直接輸出英文提示詞，不要加任何前言或說明。'}
+      ];
+      prompt=await callClaudeRaw(arr,450);
+    }
+  }catch(e){}
+  if(pbtn){pbtn.disabled=false;pbtn.textContent='🤖 AI 精選海報';}
+  const ov=document.createElement('div');ov.id='poster-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9800;overflow-y:auto;-webkit-overflow-scrolling:touch';
+  ov.innerHTML=`<div style="max-width:420px;margin:0 auto;padding:24px 16px 40px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="color:#fff;font-size:15px;font-weight:700">🤖 AI 精選海報</div>
+      <button onclick="document.getElementById('poster-ov').remove()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:50%;width:32px;height:32px;font-size:20px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px;letter-spacing:.04em">AI 精選照片 · ${best.name}</div>
+    <img src="${best.url}" style="width:100%;border-radius:10px;display:block;margin-bottom:18px;max-height:65vw;object-fit:cover">
+    <div style="color:rgba(255,255,255,.6);font-size:12px;margin-bottom:8px;letter-spacing:.04em">📋 ChatGPT 海報提示詞　日系簡約 · 9:16</div>
+    <div id="poster-prompt-text" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:14px;color:#e8e4dc;font-size:12px;line-height:1.75;margin-bottom:14px;white-space:pre-wrap;word-break:break-word">${prompt||'（請先在後台設定 Claude API Key 以生成提示詞）'}</div>
+    <button id="poster-copy-btn" onclick="(function(btn){navigator.clipboard.writeText(document.getElementById('poster-prompt-text').textContent).then(()=>{btn.textContent='✅ 已複製';setTimeout(()=>{btn.textContent='📋 複製提示詞'},2000)}).catch(()=>{alert('請手動選取文字複製')})})(this)" style="width:100%;padding:13px;border-radius:24px;border:none;background:linear-gradient(135deg,#e8715a,#c0392b);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;letter-spacing:.04em">📋 複製提示詞</button>
+    <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.3)">將提示詞貼入 ChatGPT → 選擇圖像生成 → 即可製作精美海報</div>
+  </div>`;
+  document.body.appendChild(ov);
 }
 
 // ── GALLERY ──
