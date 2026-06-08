@@ -1364,9 +1364,9 @@ async function genAiTask(id){
   btn.textContent='⏳ 生成中…';btn.disabled=true;
   try{
     const result=await callClaude(
-      '你是日本旅遊行程助手，請為以下景點生成4到6個具體的打卡任務項目（繁體中文），每項一行，不要編號，不要符號，只要任務文字：\n景點：'+taskName
+      '你是一個專門設計有趣旅遊任務的創意達人。請為以下日本景點設計1到2個任務（繁體中文）。\n\n設計原則：\n- 有趣、新鮮感、一般人沒想過的角度\n- 類型盡量不同（例如：一個觀察類、一個互動類）\n- 不能影響其他遊客\n- 每項一行，不要編號、不要符號，只要任務文字\n\n景點：'+taskName
     );
-    const items=result.split('\n').map(function(s){return s.trim();}).filter(function(s){return s;}).slice(0,6).join('\n');
+    const items=result.split('\n').map(function(s){return s.trim();}).filter(function(s){return s;}).slice(0,2).join('\n');
     ta.value=items;
     setAdmField(id,'taskItems',items);
     btn.textContent='✅ 完成';
