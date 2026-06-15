@@ -1326,7 +1326,7 @@ function isEarlyHide(id){
 function canOpen(id){
   if(id===1)return true;
   const now=new Date();
-  if(TIMES[id]&&now<new Date(TIMES[id]))return false;
+  if(TIMES[id]){const t=new Date(TIMES[id]);const today=new Date();const td=new Date(today.getFullYear(),today.getMonth(),today.getDate());const tt=new Date(t.getFullYear(),t.getMonth(),t.getDate());if(td<tt)return false;}
   if(PREV[id]&&!isCmpl(PREV[id]))return false;
   if(id===21){for(let i=1;i<=20;i++)if(!isCmpl(i))return false}
   return true;
