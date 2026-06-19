@@ -1437,7 +1437,7 @@ async function callClaudeRaw(contentArr,maxTokens){
       'anthropic-dangerous-direct-browser-access':'true',
       'content-type':'application/json'
     },
-    body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:maxTokens,
+    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTokens,
       messages:[{role:'user',content:contentArr}]})
   });
   if(!r.ok)throw new Error('API '+r.status);
@@ -1479,10 +1479,24 @@ async function genAiDiary(){
   }
 
   try{
-    const raw=await callClaudeRaw(contentArr,2200);
-    const m=raw.match(/\{[\s\S]*\}/);
+    const raw=await callClaudeRaw(contentArr,4000);
+    // Strip markdown code blocks if present, then extract JSON
+    const cleaned=raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    const m=cleaned.match(/\{[\s\S]*\}/);
     let parsed={desc:{},sections:[]};
-    try{if(m)parsed=JSON.parse(m[0]);}catch(e){}
+    try{
+      if(m){
+        // Try full match first; if it fails try to recover partial sections array
+        try{parsed=JSON.parse(m[0]);}
+        catch(e){
+          const sm=m[0].match(/"sections"\s*:\s*\[([\s\S]*?)(?:\]|$)/);
+          if(sm){
+            const items=sm[1].match(/"([^"]*)"/g);
+            if(items)parsed.sections=items.map(s=>s.replace(/^"|"$/g,''));
+          }
+        }
+      }
+    }catch(e){}
     window._diaryData={parsed,cwp:photoLids};
 
     if(parsed.desc){
