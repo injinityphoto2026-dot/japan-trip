@@ -1265,9 +1265,52 @@ function isCmpl(id){return gs().c.includes(id)}
 function isKwOk(id){return gs().kw.includes(id)}
 
 // ── PHOTOS ──
-function getPhotos(id){try{return JSON.parse(localStorage.getItem("fjt26_p"+id))||[]}catch{return[]}}
-function savePhotos(id,arr){try{localStorage.setItem("fjt26_p"+id,JSON.stringify(arr));return true}
-  catch{alert("儲存空間不足，請嘗試刪除部分照片");return false}}
+// ── PHOTO STORAGE: IndexedDB + memory cache (replaces localStorage 5MB limit) ──
+const _pc={};
+let _idb=null;
+function _openDb(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('fjt26_ph',1);
+    r.onupgradeneeded=e=>e.target.result.createObjectStore('ph');
+    r.onsuccess=e=>{_idb=e.target.result;res(_idb);};
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function _initPhotos(){
+  await _openDb();
+  // Migrate existing localStorage photos to IndexedDB
+  for(let i=1;i<=TOTAL;i++){
+    const ls=localStorage.getItem('fjt26_p'+i);
+    if(ls){try{
+      const arr=JSON.parse(ls);
+      if(arr.length){const tx=_idb.transaction('ph','readwrite');tx.objectStore('ph').put(arr,'p'+i);}
+      localStorage.removeItem('fjt26_p'+i);
+    }catch{}}
+  }
+  // Load all photos into memory cache
+  await new Promise(res=>{
+    const tx=_idb.transaction('ph','readonly');
+    const store=tx.objectStore('ph');
+    const req=store.getAllKeys();
+    req.onsuccess=()=>{
+      const keys=req.result;
+      if(!keys.length){res();return;}
+      let done=0;
+      keys.forEach(k=>{
+        const r=store.get(k);
+        r.onsuccess=()=>{_pc[k]=r.result||[];if(++done===keys.length)res();};
+        r.onerror=()=>{if(++done===keys.length)res();};
+      });
+    };
+    req.onerror=res;
+  });
+}
+function getPhotos(id){return _pc['p'+id]||[];}
+function savePhotos(id,arr){
+  _pc['p'+id]=arr;
+  if(_idb){const tx=_idb.transaction('ph','readwrite');tx.objectStore('ph').put(arr,'p'+id);}
+  return true;
+}
 
 async function compress(file){
   return new Promise(r=>{
@@ -2200,21 +2243,27 @@ function admTog(id){const c=document.getElementById('adm-c'+id);if(c)c.classList
 
 function resetAllProgress(){
   if(confirm('確定重置所有進度？\n（照片與闖關紀錄將全部清除，此操作無法復原）')){
-    for(let i=1;i<=TOTAL;i++)localStorage.removeItem('fjt26_p'+i);
-    localStorage.removeItem('fjt26');
-    localStorage.removeItem('fjt26_adm');
-    location.reload();
+    const finish=()=>{
+      for(let i=1;i<=TOTAL;i++)localStorage.removeItem('fjt26_p'+i);
+      localStorage.removeItem('fjt26');
+      localStorage.removeItem('fjt26_adm');
+      location.reload();
+    };
+    const r=indexedDB.deleteDatabase('fjt26_ph');
+    r.onsuccess=finish;r.onerror=finish;
   }
 }
 
 // ── INIT ──
-if(gs().c.length===TOTAL)document.getElementById('fab-sum').classList.add('vis');
-cacheOrigTask();
-refreshAll();
-setInterval(()=>{
-  for(let i=1;i<=TOTAL;i++){if(TIMES[i])fmtCd(i);render(i)}
-  updateBar();updateDaySections();
-},1000);
+_initPhotos().then(()=>{
+  if(gs().c.length===TOTAL)document.getElementById('fab-sum').classList.add('vis');
+  cacheOrigTask();
+  refreshAll();
+  setInterval(()=>{
+    for(let i=1;i<=TOTAL;i++){if(TIMES[i])fmtCd(i);render(i)}
+    updateBar();updateDaySections();
+  },1000);
+});
 </script>
 </body>
 </html>
