@@ -2018,34 +2018,61 @@ async function generatePoster(){
     if(pbtn){pbtn.disabled=false;pbtn.textContent='🖼️ 精選海報';}
     alert('請先上傳至少一張照片才能製作旅遊海報！');return;
   }
-  if(pbtn){pbtn.textContent='✍️ 生成提示詞...';}
+  if(pbtn){pbtn.textContent='✍️ 生成文案...';}
   let prompt='';
+  let copy={title:'米妮生日之旅',sub:best.name,tagline:'再見不是結束，只是下一次旅行的起點。',en:'Until we meet again, Japan.',date:'2026.06.16 — 06.19'};
   try{
     const key=getClaudeKey();
     if(key){
       const b64=best.url.replace(/^data:[^;]+;base64,/,'');
       const arr=[
         {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
-        {type:'text',text:'這是一張旅遊照片，拍攝地點是「'+best.name+'」（日本米妮生日之旅 2026）。\n請根據這張照片的視覺元素、色調與氛圍，生成一段英文的 ChatGPT 圖像生成提示詞，讓 ChatGPT 可以製作一張精美的旅遊海報。\n\n要求：\n- 風格：日系簡約（Japanese minimalist）\n- 尺寸：9:16 直式\n- 融入照片中的主要景物、光線與色彩特徵\n- 加入日文排版元素：標題「米妮生日之旅」或英文「Neko Birthday Trip 2026」\n- 包含地名「'+best.name+'」作為副標\n- 保留乾淨留白空間，字體清雅\n- 長度 150–200 字\n\n請直接輸出英文提示詞，不要加任何前言或說明。'}
+        {type:'text',text:`這是日本旅遊「${best.name}」的照片（米妮生日之旅 2026）。\n請完成兩個任務，只回覆純 JSON，不加 markdown：\n1. "copy"：海報美編文字\n   - "title"：主標題（6-10字，繁體中文，有詩意）\n   - "sub"：副標（景點名，可含日文）\n   - "tagline"：金句（12-20字，感性優美，繁體中文）\n   - "en"：英文短句（8-12字，簡潔有力）\n   - "date"："2026.06.16 — 06.19"\n2. "prompt"：英文 ChatGPT 圖像生成提示詞（150-200字），日系簡約 9:16，融入照片色調\n\n格式：{"copy":{"title":"...","sub":"...","tagline":"...","en":"...","date":"2026.06.16 — 06.19"},"prompt":"..."}`}
       ];
-      prompt=await callClaudeRaw(arr,450);
+      const raw=await callClaudeRaw(arr,700);
+      const cleaned=raw.replace(/```json\s*/gi,'').replace(/```/g,'').trim();
+      const m=cleaned.match(/\{[\s\S]*\}/);
+      if(m){try{const p=JSON.parse(m[0]);if(p.copy)copy={...copy,...p.copy};if(p.prompt)prompt=p.prompt;}catch(e){}}
     }
   }catch(e){}
   if(pbtn){pbtn.disabled=false;pbtn.textContent='🖼️ 精選海報';}
   const old=document.getElementById('poster-ov');if(old)old.remove();
   const ov=document.createElement('div');ov.id='poster-ov';
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9800;overflow-y:auto;-webkit-overflow-scrolling:touch';
-  ov.innerHTML=`<div style="max-width:420px;margin:0 auto;padding:24px 16px 40px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="color:#fff;font-size:15px;font-weight:700">🤖 AI 精選海報</div>
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9800;overflow-y:auto;-webkit-overflow-scrolling:touch';
+  ov.innerHTML=`<div style="max-width:420px;margin:0 auto;padding:24px 16px 48px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="color:#fff;font-size:15px;font-weight:700">🖼️ AI 精選海報</div>
       <button onclick="document.getElementById('poster-ov').remove()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:50%;width:32px;height:32px;font-size:20px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
     </div>
-    <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px;letter-spacing:.04em">AI 精選照片 · ${best.name}</div>
-    <img src="${best.url}" style="width:100%;border-radius:10px;display:block;margin-bottom:18px;max-height:65vw;object-fit:cover">
-    <div style="color:rgba(255,255,255,.6);font-size:12px;margin-bottom:8px;letter-spacing:.04em">📋 ChatGPT 海報提示詞　日系簡約 · 9:16</div>
-    <div id="poster-prompt-text" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:14px;color:#e8e4dc;font-size:12px;line-height:1.75;margin-bottom:14px;white-space:pre-wrap;word-break:break-word">${prompt||'（請先在後台設定 Claude API Key 以生成提示詞）'}</div>
+
+    <!-- 照片原始比例 + 文字疊層 -->
+    <div style="position:relative;border-radius:14px;overflow:hidden;margin-bottom:16px">
+      <img src="${best.url}" style="width:100%;height:auto;display:block">
+      <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0) 38%,rgba(0,0,0,.78) 100%);pointer-events:none"></div>
+      <div style="position:absolute;bottom:0;left:0;right:0;padding:20px 18px 18px;pointer-events:none">
+        <div style="font-size:9.5px;color:rgba(255,255,255,.55);letter-spacing:.22em;margin-bottom:5px;font-family:'Hiragino Mincho ProN',serif">${copy.date}</div>
+        <div style="font-size:22px;font-weight:700;color:#fff;letter-spacing:.07em;margin-bottom:3px;font-family:'Hiragino Mincho ProN','Noto Serif TC',serif;text-shadow:0 2px 8px rgba(0,0,0,.5);line-height:1.3">${copy.title}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.68);letter-spacing:.14em;margin-bottom:8px;font-family:'Hiragino Mincho ProN',serif">${copy.sub}</div>
+        <div style="font-size:12.5px;color:rgba(255,255,255,.88);font-family:'Hiragino Mincho ProN',serif;line-height:1.75;font-style:italic">${copy.tagline}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.42);letter-spacing:.1em;margin-top:6px;font-style:italic">${copy.en}</div>
+      </div>
+    </div>
+
+    <!-- AI 美編文字卡 -->
+    <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:18px;margin-bottom:16px">
+      <div style="font-size:9px;color:rgba(255,255,255,.35);letter-spacing:.18em;margin-bottom:12px;text-transform:uppercase">✦ AI 美編文字</div>
+      <div style="font-size:20px;font-weight:700;color:#fff;letter-spacing:.06em;font-family:'Hiragino Mincho ProN',serif;margin-bottom:4px;line-height:1.3">${copy.title}</div>
+      <div style="font-size:10.5px;color:rgba(255,255,255,.45);letter-spacing:.16em;margin-bottom:13px;font-family:'Hiragino Mincho ProN',serif">${copy.sub} · ${copy.date}</div>
+      <div style="width:28px;height:1px;background:rgba(255,255,255,.2);margin-bottom:13px"></div>
+      <div style="font-size:13.5px;color:#e8d8c4;font-family:'Hiragino Mincho ProN',serif;line-height:2;letter-spacing:.04em;margin-bottom:10px">${copy.tagline}</div>
+      <div style="font-size:10.5px;color:rgba(255,255,255,.35);letter-spacing:.09em;font-style:italic">${copy.en}</div>
+    </div>
+
+    <!-- ChatGPT 海報提示詞 -->
+    <div style="color:rgba(255,255,255,.55);font-size:11.5px;margin-bottom:8px;letter-spacing:.04em">📋 ChatGPT 海報提示詞　日系簡約 · 9:16</div>
+    <div id="poster-prompt-text" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:14px;color:#ddd8d0;font-size:11.5px;line-height:1.8;margin-bottom:14px;white-space:pre-wrap;word-break:break-word">${prompt||'（請先在後台設定 Claude API Key 以生成提示詞）'}</div>
     <button id="poster-copy-btn" onclick="(function(btn){navigator.clipboard.writeText(document.getElementById('poster-prompt-text').textContent).then(()=>{btn.textContent='✅ 已複製';setTimeout(()=>{btn.textContent='📋 複製提示詞'},2000)}).catch(()=>{alert('請手動選取文字複製')})})(this)" style="width:100%;padding:13px;border-radius:24px;border:none;background:linear-gradient(135deg,#e8715a,#c0392b);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;letter-spacing:.04em">📋 複製提示詞</button>
-    <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.3)">將提示詞貼入 ChatGPT → 選擇圖像生成 → 即可製作精美海報</div>
+    <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.25)">將提示詞貼入 ChatGPT → 選擇圖像生成 → 即可製作精美海報</div>
   </div>`;
   document.body.appendChild(ov);
 }
