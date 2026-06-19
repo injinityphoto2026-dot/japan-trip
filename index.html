@@ -1859,7 +1859,7 @@ function openSummary(){
       style="margin-top:20px;padding:12px 28px;border-radius:24px;border:none;background:${allDone?'linear-gradient(135deg,#f093fb,#f5576c)':'#ccc'};color:#fff;font-size:14px;font-weight:700;${allDone?'cursor:pointer':'cursor:not-allowed'};letter-spacing:.5px;${allDone?'box-shadow:0 4px 15px rgba(245,87,108,.4)':'opacity:.55'}">${allDone?'✨ AI 生成旅遊日記':'🔒 完成全部關卡後開放'}</button>`})()}
     <div id="ai-diary-out" style="display:none;width:100%;max-width:480px;margin:0 auto"></div>
     <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-      <button onclick="generatePoster()"
+      <button id="poster-gen-btn" onclick="generatePoster()"
         style="padding:10px 22px;border-radius:24px;border:none;background:linear-gradient(135deg,#fff3f0,#ffeef5);color:#c0392b;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.04em;box-shadow:0 2px 8px rgba(200,60,40,.15)">🖼️ 精選海報</button>
       <button onclick="exportPDF()"
         style="padding:10px 22px;border-radius:4px;border:1px solid #c8c2b8;background:none;color:#7a7268;font-size:13px;letter-spacing:.08em;cursor:pointer;font-family:inherit">PDF 匯出</button>
@@ -2011,11 +2011,11 @@ function pline(ctx,x1,y1,x2,y2){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,
 function pspaced(ctx,text,x,y,sp){let cx=x;for(const c of text){ctx.fillText(c,cx,y);cx+=ctx.measureText(c).width+sp;}}
 
 async function generatePoster(){
-  const pbtn=document.querySelector('.s-abtn-poster');
+  const pbtn=document.querySelector('.s-abtn-poster')||document.getElementById('poster-gen-btn');
   if(pbtn){pbtn.disabled=true;pbtn.textContent='🔍 AI 分析中...';}
   const best=await pickBestPhotoAI();
   if(!best){
-    if(pbtn){pbtn.disabled=false;pbtn.textContent='🤖 AI 精選海報';}
+    if(pbtn){pbtn.disabled=false;pbtn.textContent='🖼️ 精選海報';}
     alert('請先上傳至少一張照片才能製作旅遊海報！');return;
   }
   if(pbtn){pbtn.textContent='✍️ 生成提示詞...';}
@@ -2031,7 +2031,8 @@ async function generatePoster(){
       prompt=await callClaudeRaw(arr,450);
     }
   }catch(e){}
-  if(pbtn){pbtn.disabled=false;pbtn.textContent='🤖 AI 精選海報';}
+  if(pbtn){pbtn.disabled=false;pbtn.textContent='🖼️ 精選海報';}
+  const old=document.getElementById('poster-ov');if(old)old.remove();
   const ov=document.createElement('div');ov.id='poster-ov';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9800;overflow-y:auto;-webkit-overflow-scrolling:touch';
   ov.innerHTML=`<div style="max-width:420px;margin:0 auto;padding:24px 16px 40px">
